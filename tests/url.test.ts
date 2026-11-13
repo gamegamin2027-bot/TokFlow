@@ -27,6 +27,30 @@ describe("parseTikTokUrl", () => {
     expect(parseTikTokUrl("https://vm.tiktok.com/ZMabc123/")).toEqual({ kind: "short", url: "https://vm.tiktok.com/ZMabc123/" });
     expect(parseTikTokUrl("https://www.tiktok.com/t/ZTabc123/").kind).toBe("short");
   });
+  it("accepte toutes les écritures d'un lien de vidéo", () => {
+    const id = "7123456789012345678";
+    for (const u of [
+      `https://www.tiktok.com/@user/video/${id}`,
+      `http://tiktok.com/@user-name.x/video/${id}/`,
+      `https://www.tiktok.com/@/video/${id}`,
+      `https://m.tiktok.com/v/${id}.html?u_code=abc`,
+      `https://www.tiktok.com/share/video/${id}`,
+      `https://www.tiktok.com/embed/v2/${id}`,
+      `https://www.tiktok.com/embed/${id}`,
+      `https://www.tiktok.com/player/v1/${id}`,
+      `WWW.TIKTOK.COM/@user/video/${id}#comments`,
+    ]) {
+      const link = parseTikTokUrl(u);
+      expect(link, u).toMatchObject({ kind: "video", id });
+      expect(link.url).toMatch(new RegExp(`^https://www\\.tiktok\\.com/@[A-Za-z0-9._-]+/video/${id}$`));
+    }
+  });
+  it("retrouve le lien dans un texte de partage", () => {
+    expect(parseTikTokUrl("Regarde cette vidéo ! https://vm.tiktok.com/ZMh-a_c12/ Envoyé depuis TikTok")).toEqual({ kind: "short", url: "https://vm.tiktok.com/ZMh-a_c12/" });
+    expect(parseTikTokUrl("vu sur TikTok : https://www.tiktok.com/@user/video/7123456789012345678?_r=1.").kind).toBe("video");
+    expect(code(() => parseTikTokUrl("https://evil.example/?next=https://www.tiktok.com.evil.io/@a/video/12345678901"))).toMatch(/UNSUPPORTED_URL|INVALID_URL/);
+    expect(code(() => parseTikTokUrl("https://evil.example/tiktok.com/@a/video/12345678901"))).toMatch(/UNSUPPORTED_URL|INVALID_URL/);
+  });
   it("rejette les entrées invalides", () => {
     expect(code(() => parseTikTokUrl(""))).toBe("INVALID_URL");
     expect(code(() => parseTikTokUrl(42))).toBe("INVALID_URL");
@@ -51,6 +75,13 @@ describe("resolveTikTokLink", () => {
   it("suit une redirection vers tiktok.com", async () => {
     const r = await resolveTikTokLink(short, res("https://www.tiktok.com/@user/video/7123456789012345678?_r=1"));
     expect(r.id).toBe("7123456789012345678");
+  });
+  it("suit une redirection en deux temps, jamais hors de TikTok", async () => {
+    const hops = ["https://www.tiktok.com/t/ZTabc123/", "https://m.tiktok.com/v/7123456789012345678.html?x=1"];
+    const chain = (async () => new Response(null, { status: 302, headers: { location: hops.shift()! } })) as unknown as typeof fetch;
+    expect(await resolveTikTokLink(short, chain)).toMatchObject({ kind: "video", id: "7123456789012345678" });
+    const loop = (async () => new Response(null, { status: 302, headers: { location: "https://vm.tiktok.com/ZMabc123/" } })) as unknown as typeof fetch;
+    await expect(resolveTikTokLink(short, loop)).rejects.toMatchObject({ code: "UNSUPPORTED_URL" });
   });
   it("refuse une redirection hors TikTok", async () => {
     await expect(resolveTikTokLink(short, res("https://evil.example/x"))).rejects.toMatchObject({ code: "UNSUPPORTED_URL" });

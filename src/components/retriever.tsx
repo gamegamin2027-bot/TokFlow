@@ -331,8 +331,8 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
           <Check className="h-3.5 w-3.5 shrink-0" /> {data.linkDownload ? t.tool.noWatermark : t.tool.found}
         </>
       }
-      title={data.title || t.tool.videoOf(data.username)}
-      subtitle={`${data.authorName ? `${data.authorName} · ` : ""}@${data.username}`}
+      title={data.title || (data.username ? t.tool.videoOf(data.username) : t.tool.found)}
+      subtitle={[data.authorName, data.username && `@${data.username}`].filter(Boolean).join(" · ")}
       meta={[
         { label: t.tool.duration, value: data.durationSeconds ? formatDuration(data.durationSeconds) : undefined },
         { label: t.tool.maxQuality, value: data.qualities[0]?.label },

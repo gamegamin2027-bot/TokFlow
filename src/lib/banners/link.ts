@@ -1,4 +1,5 @@
 import { BannerError } from "./errors";
+import { extractTikTokLink } from "../tiktok/url";
 import { fetchBytes } from "./http";
 
 export type PostLink = { id: string; username: string; kind: "video" | "photo"; canonical: string };
@@ -29,7 +30,7 @@ function parse(raw: unknown): URL {
  */
 export async function resolvePostLink(raw: unknown): Promise<PostLink> {
   if (typeof raw !== "string" || raw.length > 2048) throw new BannerError("INVALID_URL", "Collez un lien TikTok.");
-  let url = parse(raw);
+  let url = parse(extractTikTokLink(raw));
   for (let hop = 0; hop < 6; hop++) {
     const host = url.hostname.toLowerCase();
     if (PAGE_HOSTS.has(host)) {

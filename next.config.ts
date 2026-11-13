@@ -19,6 +19,14 @@ const nextConfig: NextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
         ],
       },
+      // L'espace fondateur et les interfaces ne doivent jamais être affichés dans le cadre d'un autre site (détournement de clic).
+      ...["/fondateur/:path*", "/api/:path*"].map((source) => ({
+        source,
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+        ],
+      })),
     ];
   },
 };
