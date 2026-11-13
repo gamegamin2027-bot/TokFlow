@@ -12,10 +12,10 @@ export function bannerError(err: unknown): NextResponse {
 }
 
 /** Corps JSON de petite taille uniquement : ces routes ne reçoivent qu'un lien ou une liste de numéros. */
-export async function readSmallJson(req: Request): Promise<Record<string, unknown>> {
-  if (Number(req.headers.get("content-length")) > 20_000) throw new BannerError("TOO_LARGE", "Requête trop volumineuse.", 413);
+export async function readSmallJson(req: Request, limit = 20_000): Promise<Record<string, unknown>> {
+  if (Number(req.headers.get("content-length")) > limit) throw new BannerError("TOO_LARGE", "Requête trop volumineuse.", 413);
   const text = await req.text();
-  if (text.length > 20_000) throw new BannerError("TOO_LARGE", "Requête trop volumineuse.", 413);
+  if (text.length > limit) throw new BannerError("TOO_LARGE", "Requête trop volumineuse.", 413);
   try {
     const body: unknown = JSON.parse(text || "{}");
     if (body && typeof body === "object" && !Array.isArray(body)) return body as Record<string, unknown>;

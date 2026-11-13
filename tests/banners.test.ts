@@ -8,7 +8,7 @@ import type { ClipSource } from "@/lib/banners/clip-source";
 process.env.BANNER_TEST_LOCAL_MEDIA = "1";
 process.env.BANNER_MEDIA_TIMEOUT_MS = "1200";
 process.env.BANNER_MAX_ACTIVE = "2";
-const { analyseBanners, getBannerFile, getBannerZip, mediaUrl, resetBanners } = await import("@/lib/banners/service");
+const { analyseBanners, attachBannerClips, getBannerFile, getBannerZip, mediaUrl, resetBanners } = await import("@/lib/banners/service");
 const { resolvePostLink } = await import("@/lib/banners/link");
 const { fetchBytes } = await import("@/lib/banners/http");
 const { createClipSource } = await import("@/lib/banners/clip-source");
@@ -327,6 +327,53 @@ describe("bannières : analyse, fichiers, archive", () => {
     releases.forEach((release) => release());
     await Promise.all([first, second]);
     expect((await analyseBanners(POST, { clipSource: null })).count).toBe(1);
+  });
+});
+
+describe("bannières : animations transmises par le navigateur (serveur refusé par le service de clips)", () => {
+  const refused: ClipSource = { name: "refus", fetchClips: async () => Promise.reject(new Error("403")) };
+
+  it("complète l'analyse, adresse par adresse, sans faire confiance au navigateur", async () => {
+    stubTikTok(() => page(4));
+    const set = await analyseBanners(POST, { clipSource: refused });
+    expect(set).toMatchObject({ count: 4, animatedCount: 0, clipStatus: "unavailable" });
+    expect(set.clipFallback).toEqual({ api: "https://www.tikwm.com/api/", url: POST });
+
+    expect(await code(attachBannerClips(set.id, [`${base}/clip/1.mp4`]))).toBe("BAD_CLIPS"); // mauvaise longueur
+    expect(await code(attachBannerClips(set.id, "x"))).toBe("BAD_CLIPS");
+    expect(await code(attachBannerClips("a".repeat(32), []))).toBe("EXPIRED");
+
+    hits.length = 0;
+    const done = await attachBannerClips(set.id, [`${base}/clip/1.mp4`, "http://169.254.169.254/latest/meta-data", `${base}/page.mp4`, null]);
+    expect(done).toMatchObject({ id: set.id, animatedCount: 1, clipStatus: "partial", clipFallback: undefined });
+    expect(done.items.map((i) => i.animated)).toEqual([true, false, false, false]);
+    expect(hits.some((h) => h.includes("meta-data"))).toBe(false); // adresse étrangère jamais appelée
+    expect((await getBannerFile(set.id, 1, "mp4")).data.equals(MP4(1))).toBe(true);
+    expect(await code(getBannerFile(set.id, 3, "mp4"))).toBe("NO_ANIMATION"); // faux MP4 rejeté
+    expect((await getBannerZip(set.id, [{ n: 1 }, { n: 2 }])).files).toEqual(["Banniere_01.mp4", "Banniere_02.jpg"]);
+
+    // Une analyse déjà complétée n'accepte plus de nouvelles adresses.
+    hits.length = 0;
+    await attachBannerClips(set.id, [null, `${base}/clip/2.mp4`, null, null]);
+    expect(hits).toEqual([]);
+    // Elle n'est plus partagée : un autre visiteur repart d'une analyse neuve.
+    expect((await analyseBanners(POST, { clipSource: refused })).id).not.toBe(set.id);
+  });
+
+  it("publication sans aucune animation : images fixes, sans avertissement d'indisponibilité", async () => {
+    stubTikTok(() => page(2));
+    const set = await analyseBanners(POST, { clipSource: refused });
+    const done = await attachBannerClips(set.id, [null, null]);
+    expect(done).toMatchObject({ animatedCount: 0, clipStatus: "none", clipFallback: undefined });
+  });
+
+  it("n'est pas proposé quand la source est coupée ou qu'une analyse a réussi", async () => {
+    stubTikTok(() => page(2));
+    const ok = await analyseBanners(POST, { clipSource: source([`${base}/clip/1.mp4`, `${base}/clip/2.mp4`]) });
+    expect(ok.clipFallback).toBeUndefined();
+    hits.length = 0;
+    await attachBannerClips(ok.id, [`${base}/clip/2.mp4`, `${base}/clip/1.mp4`]);
+    expect(hits).toEqual([]);
   });
 });
 

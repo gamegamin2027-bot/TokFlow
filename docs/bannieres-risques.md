@@ -88,3 +88,30 @@ Ce que TokFlow transmet à TikWM : l'adresse canonique de la publication et l'ad
   mais il révèle ce que les visiteurs de TokFlow consultent.
 - Si la dépendance est retenue : mentionner TikWM dans la politique de confidentialité, ne jamais lui transmettre d'élément
   identifiant le visiteur (c'est le cas), et garder l'interrupteur `BANNER_CLIP_SOURCE=none`.
+
+## Constat en production : TikWM refuse l'adresse de l'hébergeur (13 novembre 2026)
+
+Depuis le serveur Render, `https://www.tikwm.com/api/` répond `HTTP 403` (page HTML de son pare-feu), quel que soit le
+client HTTP utilisé. Le refus vise l'adresse du serveur, pas la requête : la même demande aboutit depuis un poste ordinaire.
+
+Solution retenue : **relais par le navigateur du visiteur** (`src/lib/banners/browser-clips.ts`).
+
+1. Le serveur analyse la publication et prépare les images (inchangé). S'il n'obtient pas les animations, sa réponse
+   contient `clipFallback`.
+2. Le navigateur du visiteur interroge alors TikWM directement. TikWM autorise ces appels depuis d'autres sites
+   (`access-control-allow-origin: *`) ; aucune protection n'est contournée.
+3. Le navigateur remet la liste d'adresses à `POST /api/banners/<id>/clips`. Le serveur ne lui fait pas confiance :
+   seules les adresses des serveurs de fichiers TikTok sont téléchargées, sans redirection, taille bornée, et le contenu
+   doit être un vrai MP4. L'analyse ainsi complétée n'est plus partagée avec les autres visiteurs.
+4. En cas d'échec, les images restent proposées avec la mention « Image fixe — animation indisponible ».
+
+Conséquences à connaître :
+
+- **Confidentialité** : dans ce cas, TikWM voit l'adresse IP et le navigateur du visiteur, en plus de l'adresse de la
+  publication. La politique de confidentialité du site le dit. Aucun cookie ni identifiant TokFlow n'est transmis
+  (`credentials: omit`, `referrerPolicy: no-referrer`).
+- **Fragilité** : le relais dépend de l'ouverture de TikWM aux navigateurs ; il peut la retirer à tout moment.
+- **Réglages** : `BANNER_BROWSER_FALLBACK=0` interdit le relais (images seules si le serveur est refusé) ;
+  `BANNER_CLIP_SOURCE=none` coupe toute utilisation de TikWM. Avec une clé `TIKWM_API_KEY` (offre payante
+  tikwmapi.com, non souscrite), le relais est désactivé, la clé ne devant jamais atteindre le navigateur.
+- Le champ `clipIssue` de la réponse donne la cause technique de l'absence d'animations (diagnostic).

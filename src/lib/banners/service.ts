@@ -28,7 +28,7 @@ const TEST_MEDIA_HOST = process.env.NODE_ENV !== "production" && process.env.BAN
 
 type Stored = { path: string; bytes: number };
 type Item = { n: number; width?: number; height?: number; imageUrls: string[]; clip: Stored | null; image: (Stored & { ext: ImageExt }) | null; pending?: Promise<void> };
-type Job = { id: string; postId: string; author: string; title: string; dir: string; touchedAt: number; clipStatus: ClipStatus; clipIssue?: string; items: Item[] };
+type Job = { id: string; postId: string; author: string; title: string; dir: string; touchedAt: number; clipStatus: ClipStatus; clipIssue?: string; attaching?: boolean; items: Item[] };
 type ImageExt = "jpg" | "webp" | "png";
 export type BannerFile = { data: Buffer; name: string; type: string };
 
@@ -134,8 +134,62 @@ function view(job: Job): BannerSet {
     clipStatus: job.clipStatus,
     notice: NOTICES[job.clipStatus],
     clipIssue: job.clipIssue,
+    clipFallback: job.clipStatus === "unavailable" && browserFallback() ? { api: "https://www.tikwm.com/api/", url: `https://www.tiktok.com/@${job.author}/photo/${job.postId}` } : undefined,
     items: job.items.map((i) => ({ n: i.n, animated: Boolean(i.clip), width: i.width, height: i.height, clipBytes: i.clip?.bytes })),
   };
+}
+
+/** Télécharge les clips d'une analyse (adresses filtrées, MP4 vérifié, tailles bornées). Renvoie le nombre d'échecs. */
+async function loadClips(job: Job, clips: (string | null)[], log: (message: string) => void): Promise<number> {
+  // Téléchargés tout de suite : leurs adresses expirent, et l'aperçu doit être immédiat.
+  let clipBudget = MAX_JOB_CLIP_BYTES;
+  let failed = 0;
+  await pool(job.items, 4, async (item, i) => {
+    const clip = clips[i];
+    if (!clip || item.clip) return;
+    const data = clipBudget > 0 ? await download([clip], Math.min(MAX_CLIP_BYTES, clipBudget), isMp4) : null;
+    if (!data) {
+      failed++;
+      return log(`clip ${item.n} : téléchargement impossible`);
+    }
+    clipBudget -= data.length;
+    const path = join(job.dir, `${pad(item.n)}.mp4`);
+    await writeFile(path, data);
+    item.clip = { path, bytes: data.length };
+  });
+  if (failed) log(`${failed} clip(s) non récupéré(s)`);
+  return failed;
+}
+
+/** Le navigateur du visiteur peut-il interroger lui-même le service de clips quand notre serveur est refusé ? */
+const browserFallback = () => process.env.BANNER_BROWSER_FALLBACK !== "0" && (process.env.BANNER_CLIP_SOURCE ?? "tikwm").toLowerCase() === "tikwm" && !process.env.TIKWM_API_KEY;
+
+/**
+ * Animations fournies par le navigateur du visiteur, lorsque le service de clips refuse notre serveur.
+ * Ces adresses ne sont pas dignes de confiance : seules celles des serveurs de fichiers TikTok sont téléchargées,
+ * sans redirection, et le contenu doit être un MP4. L'analyse devient alors propre à ce visiteur (hors cache commun).
+ */
+export async function attachBannerClips(jobId: string, clips: unknown, log: (message: string) => void = () => undefined): Promise<BannerSet> {
+  const job = getJob(jobId);
+  if (job.clipStatus !== "unavailable" || job.attaching || !browserFallback()) return view(job);
+  if (!Array.isArray(clips) || clips.length !== job.items.length) throw new BannerError("BAD_CLIPS", "Liste d'animations incohérente avec la publication.");
+  const list = clips.map((c) => (typeof c === "string" && c.length <= 2048 && mediaUrl(c) ? c : null));
+  if (state.active >= MAX_ACTIVE) throw new BannerError("BUSY", "Le service traite déjà plusieurs publications. Réessayez dans quelques secondes.", 503);
+  state.active++;
+  job.attaching = true;
+  try {
+    if (state.byPost.get(job.postId) === job.id) state.byPost.delete(job.postId);
+    const wanted = list.filter(Boolean).length;
+    const failed = await loadClips(job, list, log);
+    const animated = job.items.filter((i) => i.clip).length;
+    if (!clips.some(Boolean)) job.clipStatus = "none";
+    else if (animated > 0) job.clipStatus = animated === job.items.length ? "ok" : "partial";
+    job.clipIssue = job.clipStatus === "unavailable" ? `CLIP_DOWNLOAD (navigateur) · ${failed} sur ${wanted}, ${clips.filter(Boolean).length - wanted} adresse(s) refusée(s)` : undefined;
+  } finally {
+    job.attaching = false;
+    state.active--;
+  }
+  return view(job);
 }
 
 export type AnalyseOptions = { clipSource?: ClipSource | null; log?: (message: string) => void };
@@ -207,31 +261,13 @@ async function run(rawUrl: unknown, { clipSource, log = () => undefined }: Analy
   const clips = clipData?.clips ?? [];
   const aligned = clips.length === images.length;
   if (clipData && clips.length && !aligned) log(`clips ignorés : ${clips.length} clips pour ${images.length} images`);
-  let clipBudget = MAX_JOB_CLIP_BYTES;
-  let failed = 0;
-  if (aligned) {
-    // Téléchargés tout de suite : leurs adresses expirent, et l'aperçu doit être immédiat.
-    await pool(job.items, 4, async (item, i) => {
-      const clip = clips[i];
-      if (!clip) return;
-      const data = clipBudget > 0 ? await download([clip], Math.min(MAX_CLIP_BYTES, clipBudget), isMp4) : null;
-      if (!data) {
-        failed++;
-        return log(`clip ${item.n} : téléchargement impossible`);
-      }
-      clipBudget -= data.length;
-      const path = join(dir, `${pad(item.n)}.mp4`);
-      await writeFile(path, data);
-      item.clip = { path, bytes: data.length };
-    });
-  }
+  const failed = aligned ? await loadClips(job, clips, log) : 0;
   const animated = job.items.filter((i) => i.clip).length;
   if (!clipSource) job.clipStatus = "disabled";
   else if (!clipData || (clips.length && !aligned)) job.clipStatus = "unavailable";
   else if (!clips.some(Boolean)) job.clipStatus = "none";
   else if (animated === 0) job.clipStatus = "unavailable";
   else job.clipStatus = animated === job.items.length ? "ok" : "partial";
-  if (failed) log(`${failed} clip(s) non récupéré(s)`);
   job.clipIssue = issue ?? (clipData && clips.length && !aligned ? `CLIPS_MISMATCH · ${clips.length} clips pour ${images.length} images` : failed ? `CLIP_DOWNLOAD · ${failed} sur ${clips.filter(Boolean).length}` : undefined);
 
   if (known) await drop(known);

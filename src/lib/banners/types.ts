@@ -15,5 +15,7 @@ export type BannerSet = {
   notice?: string;
   /** Cause technique de l'absence d'animations (diagnostic). */
   clipIssue?: string;
+  /** Présent lorsque le navigateur du visiteur peut demander lui-même les animations au service tiers. */
+  clipFallback?: { api: string; url: string };
   items: BannerItem[];
 };

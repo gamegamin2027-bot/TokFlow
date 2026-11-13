@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertCircle, ArrowRight, Check, ClipboardPaste, Download, FileVideo, Link2, Loader2, Music, Play, RotateCcw, Upload, X } from "lucide-react";
 import { DownloadError, requestFile, type DownloadPhase } from "@/lib/client-download";
 import { availableTargets, MP3_BITRATES, type Mp4Target, type OutputFormat } from "@/lib/media/formats";
+import { completeInBrowser } from "@/lib/banners/browser-clips";
 import type { BannerSet } from "@/lib/banners/types";
 import type { AnalyzeResult, ApiErrorBody } from "@/lib/types";
 import { cn, formatBytes, formatDuration } from "@/lib/utils";
@@ -97,7 +98,7 @@ export function Retriever() {
           // 2. Bannières : carrousel de photos, ou publication sans flux vidéo.
           setLoading("banners");
           const banners = await postJson<BannerSet>("/api/banners", { url: video?.ok ? video.data.url : value }, controller.signal);
-          if (banners.ok) setSource({ kind: "banners", data: banners.data });
+          if (banners.ok) setSource({ kind: "banners", data: await completeInBrowser(banners.data, controller.signal) });
           else if (video?.ok) setSource({ kind: "link", data: video.data });
           else if (video && (!banners.error || notBanners.has(banners.error.code))) fail(video.error, "La vidéo n'a pas pu être récupérée");
           else fail(banners.error, "Les bannières n'ont pas pu être récupérées");

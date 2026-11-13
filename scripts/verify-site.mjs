@@ -60,12 +60,19 @@ async function banners() {
     const t = Date.now();
     let res = await post("/api/banners", { url: c.url });
     let set = await res.json();
-    // Animations momentanément indisponibles (limite de débit du service tiers) : un second essai.
-    if (res.ok && set.clipStatus === "unavailable") {
-      console.log("      animations indisponibles au premier essai, nouvel essai dans 3 s");
-      await sleep(3000);
-      res = await post("/api/banners", { url: c.url });
-      set = await res.json();
+    // Le service de clips refuse le serveur : même relais que celui du navigateur d'un visiteur (src/lib/banners/browser-clips.ts).
+    if (res.ok && set.clipFallback) {
+      console.log(`      serveur refusé par le service de clips (${set.clipIssue ?? "?"}) : relais « navigateur »`);
+      for (let attempt = 0; attempt < 3 && set.clipFallback; attempt++) {
+        await sleep(1300);
+        const body = await fetch(`${set.clipFallback.api}?url=${encodeURIComponent(set.clipFallback.url)}`).then((r) => r.json()).catch(() => null);
+        if (body?.code !== 0 || String(body.data?.id) !== set.postId) continue;
+        let clips = (body.data.live_images ?? []).map((u) => (typeof u === "string" ? u : null));
+        if (!clips.length) clips = set.items.map(() => null);
+        const done = await post(`/api/banners/${set.id}/clips`, { clips });
+        if (done.ok) set = await done.json();
+        else console.log(`      relais refusé : ${done.status} ${await done.text()}`);
+      }
     }
     if (!check(res.ok, "analyse", res.ok ? `${((Date.now() - t) / 1000).toFixed(1)} s · « ${set.title} » · @${set.author} · statut ${set.clipStatus}` : `${res.status} ${JSON.stringify(set)}`)) continue;
     check(set.count === c.count, "nombre de bannières détectées", `${set.count} (attendu ${c.count})`);
