@@ -4,7 +4,7 @@ import { ApiError, errorResponse } from "@/lib/errors";
 import { AUDIO_MIME, canCopyToM4a, m4aArgs, mp3Args } from "@/lib/media/audio";
 import { convert, probe } from "@/lib/media/ffmpeg";
 import { isMp3Bitrate, isOutputFormat, safeFileName } from "@/lib/media/formats";
-import { acquireJob, createWorkDir, fileDownloadResponse } from "@/lib/media/jobs";
+import { createWorkDir, fileDownloadResponse, waitForJob } from "@/lib/media/jobs";
 import { downloadFromLink } from "@/lib/media/link-engine";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { mp4Args } from "@/lib/media/video";
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     const bitrate = body.bitrate ?? 192;
     if (format === "mp3" && !isMp3Bitrate(bitrate)) throw new ApiError("INVALID_REQUEST", "Débit MP3 inconnu.");
 
-    release = acquireJob();
+    release = await waitForJob(20_000); // courte file d'attente plutôt qu'un refus immédiat
     const work = await createWorkDir();
     cleanup = work.cleanup;
 

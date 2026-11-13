@@ -8,6 +8,20 @@ export class DownloadError extends Error {
   }
 }
 
+/** Nom de fichier annoncé par le serveur : la forme UTF-8 (accents) est préférée à la forme ASCII. */
+export function fileNameFrom(header: string | null): string | undefined {
+  if (!header) return undefined;
+  const utf8 = header.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  if (utf8) {
+    try {
+      return decodeURIComponent(utf8);
+    } catch {
+      /* forme invalide : on retombe sur le nom ASCII */
+    }
+  }
+  return header.match(/filename="([^"]+)"/)?.[1];
+}
+
 /**
  * Lance un traitement serveur, suit la progression du transfert puis
  * enregistre le fichier sur l'appareil.
@@ -27,7 +41,7 @@ export async function requestFile(input: string, init: RequestInit, onPhase: (p:
   }
 
   const total = Number(res.headers.get("content-length") ?? 0);
-  const fileName = res.headers.get("content-disposition")?.match(/filename="([^"]+)"/)?.[1] ?? "tokflow";
+  const fileName = fileNameFrom(res.headers.get("content-disposition")) ?? "tokflow";
   const type = res.headers.get("content-type") ?? "application/octet-stream";
 
   const chunks: BlobPart[] = [];

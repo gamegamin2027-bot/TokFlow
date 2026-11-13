@@ -15,11 +15,22 @@
  */
 
 export const SIGNATURE_SIZE = 32; // images analysées en 32×32
-const CHROMA = 8; // histogramme de teinte 8×8 (indépendant de la luminosité)
-const TONES = 8; // histogramme de luminosité
-const THUMB = 8; // vignette de composition 8×8
+const GRID = 4; // l'image est divisée en 4×4 zones
+const CELLS = GRID * GRID;
+const CELL = SIGNATURE_SIZE / GRID; // 8 pixels de côté
+const CHROMA = 4; // histogramme de teinte 4×4 par zone (indépendant de la luminosité)
+const TONES = 4; // histogramme de luminosité par zone
+const SUB = 4; // mini-vignette 4×4 par zone (composition)
+const PER_CELL = CHROMA * CHROMA + TONES + SUB * SUB;
+/** Nombre de zones retenues pour mesurer un changement (les plus modifiées). */
+const TOP_CELLS = 4;
 
-export type Signature = { chroma: Float32Array; tones: Float32Array; luma: Float32Array; blank: boolean };
+/**
+ * Résumé compact d'une image (576 octets). Chaque zone a son propre résumé, ce qui permet de
+ * voir un changement qui n'occupe qu'une partie de l'écran : beaucoup de vidéos de bannières
+ * montrent la bannière dans un cadre, sur un fond fixe avec du texte.
+ */
+export type Signature = { data: Uint8Array; blank: boolean };
 export type { BannerSegment as Segment, BannerSensitivity as Sensitivity, BannerVerdict as Verdict } from "./types";
 import type { BannerSegment as Segment, BannerSensitivity as Sensitivity, BannerVerdict as Verdict } from "./types";
 
@@ -32,14 +43,13 @@ export type DetectionResult = {
   reason: string;
 };
 
+const scratch = new Float32Array(CELLS * PER_CELL);
+
 /** Résume une image RGB24 de SIGNATURE_SIZE × SIGNATURE_SIZE pixels. */
 export function signatureOf(rgb: Uint8Array): Signature {
   const n = SIGNATURE_SIZE;
   const pixels = n * n;
-  const chroma = new Float32Array(CHROMA * CHROMA);
-  const tones = new Float32Array(TONES);
-  const luma = new Float32Array(THUMB * THUMB);
-  const block = n / THUMB;
+  const acc = scratch.fill(0);
   let sum = 0;
   let sumSq = 0;
   for (let y = 0; y < n; y++) {
@@ -49,46 +59,70 @@ export function signatureOf(rgb: Uint8Array): Signature {
       const g = rgb[o + 1];
       const b = rgb[o + 2];
       const l = 0.299 * r + 0.587 * g + 0.114 * b;
+      const base = ((y >> 3) * GRID + (x >> 3)) * PER_CELL;
       // Teinte (Cb, Cr) répartie en douceur sur les cases voisines : un léger changement
       // d'éclairage ou de saturation ne fait pas « sauter » l'image d'une case à l'autre.
-      const cb = ((b - l) * 0.564 + 128) / 255 * (CHROMA - 1);
-      const cr = ((r - l) * 0.713 + 128) / 255 * (CHROMA - 1);
-      const cb0 = Math.min(CHROMA - 2, Math.max(0, Math.floor(cb)));
-      const cr0 = Math.min(CHROMA - 2, Math.max(0, Math.floor(cr)));
-      const fb = Math.min(1, Math.max(0, cb - cb0));
-      const fr = Math.min(1, Math.max(0, cr - cr0));
-      chroma[cb0 * CHROMA + cr0] += (1 - fb) * (1 - fr);
-      chroma[cb0 * CHROMA + cr0 + 1] += (1 - fb) * fr;
-      chroma[(cb0 + 1) * CHROMA + cr0] += fb * (1 - fr);
-      chroma[(cb0 + 1) * CHROMA + cr0 + 1] += fb * fr;
+      const cb = Math.min(CHROMA - 1, Math.max(0, (((b - l) * 0.564 * 2 + 128) / 255) * (CHROMA - 1)));
+      const cr = Math.min(CHROMA - 1, Math.max(0, (((r - l) * 0.713 * 2 + 128) / 255) * (CHROMA - 1)));
+      const cb0 = Math.min(CHROMA - 2, Math.floor(cb));
+      const cr0 = Math.min(CHROMA - 2, Math.floor(cr));
+      const fb = cb - cb0;
+      const fr = cr - cr0;
+      acc[base + cb0 * CHROMA + cr0] += (1 - fb) * (1 - fr);
+      acc[base + cb0 * CHROMA + cr0 + 1] += (1 - fb) * fr;
+      acc[base + (cb0 + 1) * CHROMA + cr0] += fb * (1 - fr);
+      acc[base + (cb0 + 1) * CHROMA + cr0 + 1] += fb * fr;
       const tp = (l / 255) * (TONES - 1);
       const t0 = Math.min(TONES - 2, Math.floor(tp));
-      tones[t0] += 1 - (tp - t0);
-      tones[t0 + 1] += tp - t0;
-      luma[Math.floor(y / block) * THUMB + Math.floor(x / block)] += l;
+      acc[base + CHROMA * CHROMA + t0] += 1 - (tp - t0);
+      acc[base + CHROMA * CHROMA + t0 + 1] += tp - t0;
+      acc[base + CHROMA * CHROMA + TONES + ((y & 7) >> 1) * SUB + ((x & 7) >> 1)] += l;
       sum += l;
       sumSq += l * l;
     }
   }
-  for (let i = 0; i < chroma.length; i++) chroma[i] /= pixels;
-  for (let i = 0; i < tones.length; i++) tones[i] /= pixels;
   const mean = sum / pixels;
   const variance = Math.max(0, sumSq / pixels - mean * mean);
   // Vignette centrée et normalisée : décrit la composition, pas la luminosité globale.
   const scale = Math.sqrt(variance) + 12;
-  for (let i = 0; i < luma.length; i++) luma[i] = (luma[i] / (block * block) - mean) / scale;
-  return { chroma, tones, luma, blank: variance < 4 }; // image quasi unie (noir, blanc, aplat)
+  const data = new Uint8Array(CELLS * PER_CELL);
+  const perCell = CELL * CELL;
+  for (let c = 0; c < CELLS; c++) {
+    const base = c * PER_CELL;
+    for (let i = 0; i < CHROMA * CHROMA + TONES; i++) data[base + i] = Math.round((acc[base + i] / perCell) * 255);
+    for (let i = CHROMA * CHROMA + TONES; i < PER_CELL; i++) data[base + i] = Math.min(255, Math.max(0, Math.round(((acc[base + i] / 4 - mean) / scale) * 48 + 128)));
+  }
+  return { data, blank: variance < 4 }; // image quasi unie (noir, blanc, aplat)
 }
 
-/** Distance entre deux images, de 0 (identiques) à 1 (sans rapport). */
+const cellScores = new Float32Array(CELLS);
+
+/**
+ * Distance entre deux images, de 0 (identiques) à 1 (sans rapport) : moyenne des zones les
+ * plus modifiées. Un changement complet dans un quart de l'écran compte donc pleinement.
+ */
 export function distance(a: Signature, b: Signature): number {
-  let c = 0;
-  for (let i = 0; i < a.chroma.length; i++) c += Math.abs(a.chroma[i] - b.chroma[i]);
-  let t = 0;
-  for (let i = 0; i < a.tones.length; i++) t += Math.abs(a.tones[i] - b.tones[i]);
-  let s = 0;
-  for (let i = 0; i < a.luma.length; i++) s += Math.abs(a.luma[i] - b.luma[i]);
-  return 0.4 * (c / 2) + 0.2 * (t / 2) + 0.4 * Math.min(1, s / a.luma.length);
+  const x = a.data;
+  const y = b.data;
+  for (let c = 0; c < CELLS; c++) {
+    let i = c * PER_CELL;
+    let chroma = 0;
+    for (const end = i + CHROMA * CHROMA; i < end; i++) chroma += Math.abs(x[i] - y[i]);
+    let tones = 0;
+    for (const end = i + TONES; i < end; i++) tones += Math.abs(x[i] - y[i]);
+    let shape = 0;
+    for (const end = i + SUB * SUB; i < end; i++) shape += Math.abs(x[i] - y[i]);
+    cellScores[c] = 0.4 * (chroma / 510) + 0.2 * (tones / 510) + 0.4 * Math.min(1, shape / (SUB * SUB * 48));
+  }
+  // Moyenne des TOP_CELLS plus grandes valeurs (sélection partielle, sans tri complet).
+  let total = 0;
+  for (let k = 0; k < TOP_CELLS; k++) {
+    let best = 0;
+    for (let c = 1; c < CELLS; c++) if (cellScores[c] > cellScores[best]) best = c;
+    total += cellScores[best];
+    cellScores[best] = -1;
+  }
+  return total / TOP_CELLS;
 }
 
 function median(values: number[]): number {
@@ -99,9 +133,9 @@ function median(values: number[]): number {
 }
 
 const THRESHOLDS: Record<Sensitivity, { cut: number; transition: number; ratio: number }> = {
-  low: { cut: 0.34, transition: 0.42, ratio: 2.4 },
-  normal: { cut: 0.22, transition: 0.3, ratio: 1.8 },
-  high: { cut: 0.15, transition: 0.22, ratio: 1.45 },
+  low: { cut: 0.34, transition: 0.38, ratio: 2.4 },
+  normal: { cut: 0.2, transition: 0.3, ratio: 1.8 },
+  high: { cut: 0.17, transition: 0.26, ratio: 1.6 },
 };
 
 export type DetectOptions = {
@@ -128,7 +162,9 @@ function percentile(values: number[], q: number): number {
 export function ruptureCurve(frames: Signature[], gap: number, span: number): Float32Array {
   const total = frames.length;
   const out = new Float32Array(total);
-  const lag = Math.max(2, span - 1);
+  // L'agitation interne est mesurée sur un écart de temps comparable à celui de la comparaison
+  // avant/après : un changement lent et continu (dégradé qui évolue, zoom) n'est pas une rupture.
+  const lags = [Math.max(2, span - 1), Math.max(2, gap + span)];
   for (let i = 1; i < total; i++) {
     const cross: number[] = [];
     for (let j = 1; j <= span; j++) {
@@ -138,13 +174,17 @@ export function ruptureCurve(frames: Signature[], gap: number, span: number): Fl
     }
     if (cross.length < Math.min(span, 3)) continue;
     const inner = (from: number, dir: 1 | -1) => {
-      const v: number[] = [];
-      for (let j = 0; j < span; j++) {
-        const a = from + dir * j;
-        const b = a + dir * lag;
-        if (a >= 0 && b >= 0 && a < total && b < total) v.push(distance(frames[a], frames[b]));
+      let worst = 0;
+      for (const lag of lags) {
+        const v: number[] = [];
+        for (let j = 0; j < span; j++) {
+          const a = from + dir * j;
+          const b = a + dir * lag;
+          if (a >= 0 && b >= 0 && a < total && b < total) v.push(distance(frames[a], frames[b]));
+        }
+        worst = Math.max(worst, median(v));
       }
-      return median(v);
+      return worst;
     };
     const left = inner(i - gap - 1, -1);
     const right = inner(i + gap, 1);

@@ -2,16 +2,29 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowRight, Check, ClipboardPaste, Download, FileVideo, Link2, Loader2, Music, Play, RotateCcw, Upload, X } from "lucide-react";
-import { DownloadError, requestFile, type DownloadPhase } from "@/lib/client-download";
-import { availableTargets, MP3_BITRATES, type Mp4Target, type OutputFormat } from "@/lib/media/formats";
+import { AlertCircle, ArrowRight, Check, ClipboardPaste, FileVideo, Film, LayoutGrid, Link2, Loader2, Music, Play, RotateCcw, Sparkles, Upload, X } from "lucide-react";
+import { useBannerJob, type BannerJobHandle } from "@/lib/client-banners";
+import { requestFile } from "@/lib/client-download";
+import { availableTargets, type Mp4Target } from "@/lib/media/formats";
 import type { AnalyzeResult, ApiErrorBody } from "@/lib/types";
 import { cn, formatBytes, formatDuration } from "@/lib/utils";
+import { BannerPanel } from "./banner-panel";
+import { AudioPanel, VideoPanel, type Option } from "./download-panel";
 import { Button } from "./ui/button";
-import { Notice, Select } from "./ui/field";
+import { Notice } from "./ui/field";
+
+/** Ce que l'utilisateur veut obtenir. « auto » : TokFlow regarde la vidéo et propose le mode adapté. */
+export type Mode = "auto" | "video" | "audio" | "banners";
+type Tab = Exclude<Mode, "auto">;
+
+const modes: { id: Mode; label: string; hint: string; icon: React.ReactNode }[] = [
+  { id: "auto", label: "Auto", hint: "TokFlow détecte s'il s'agit d'une vidéo classique ou d'une compilation de bannières.", icon: <Sparkles className="h-3.5 w-3.5" /> },
+  { id: "video", label: "Vidéo", hint: "La vidéo complète, en MP4.", icon: <Film className="h-3.5 w-3.5" /> },
+  { id: "audio", label: "Audio", hint: "Uniquement le son, en MP3 ou M4A.", icon: <Music className="h-3.5 w-3.5" /> },
+  { id: "banners", label: "Bannières", hint: "Chaque séquence animée de la vidéo, en fichiers séparés.", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
+];
 
 type Source = { kind: "link"; data: AnalyzeResult } | { kind: "file"; file: File; previewUrl: string; shortSide?: number; duration?: number };
-type Option = { id: string; label: string };
 type Failure = { title: string; message: string };
 
 const MAX_UPLOAD_MB = 200;
@@ -34,6 +47,7 @@ export function Retriever() {
   const [loading, setLoading] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [source, setSource] = useState<Source | null>(null);
+  const [mode, setMode] = useState<Mode>("auto");
   const fileInput = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const request = useRef<AbortController | null>(null);
@@ -175,10 +189,34 @@ export function Retriever() {
         </div>
       </form>
 
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-muted">
+      <div className="mt-3.5">
+        <div role="radiogroup" aria-label="Mode de récupération" className="mx-auto grid w-full max-w-md grid-cols-4 gap-1 rounded-xl border border-line bg-white/70 p-1">
+          {modes.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              role="radio"
+              aria-checked={mode === m.id}
+              onClick={() => setMode(m.id)}
+              className={cn(
+                "flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg text-[13px] font-medium transition-colors",
+                mode === m.id ? "bg-ink text-white" : "text-muted hover:bg-canvas hover:text-ink",
+              )}
+            >
+              <span className="max-[380px]:hidden">{m.icon}</span>
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-center text-[13px] leading-5 text-muted" data-testid="mode-hint">
+          {modes.find((m) => m.id === mode)?.hint}
+        </p>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-muted">
         <span>Vous avez déjà le fichier ?</span>
         <button type="button" onClick={() => fileInput.current?.click()} className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 font-medium text-ink underline decoration-line underline-offset-4 transition-colors hover:decoration-ink">
-          <Upload className="h-3.5 w-3.5" /> Convertir un fichier vidéo
+          <Upload className="h-3.5 w-3.5" /> Utiliser un fichier vidéo
         </button>
         <input
           ref={fileInput}
@@ -216,9 +254,9 @@ export function Retriever() {
         {source && (
           <div ref={resultRef} className="tf-rise mt-6 scroll-mt-24">
             {source.kind === "link" ? (
-              <LinkResult data={source.data} onReset={reset} onPickFile={() => fileInput.current?.click()} />
+              <LinkResult key={source.data.id} mode={mode} data={source.data} onReset={reset} onPickFile={() => fileInput.current?.click()} />
             ) : (
-              <FileResult source={source} onReset={reset} onMeta={(shortSide, duration) => setSource((s) => (s?.kind === "file" && s.shortSide === undefined ? { ...s, shortSide, duration } : s))} />
+              <FileResult mode={mode} source={source} onReset={reset} onMeta={(shortSide, duration) => setSource((s) => (s?.kind === "file" && s.shortSide === undefined ? { ...s, shortSide, duration } : s))} />
             )}
           </div>
         )}
@@ -276,8 +314,13 @@ function ResultLayout({ media, expanded, badge, title, subtitle, meta, onReset, 
 
 /* ---------- Résultat : lien ---------- */
 
-function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onReset: () => void; onPickFile: () => void }) {
+function LinkResult({ data, mode, onReset, onPickFile }: { data: AnalyzeResult; mode: Mode; onReset: () => void; onPickFile: () => void }) {
   const [playing, setPlaying] = useState(false);
+  // L'analyse des bannières travaille sur la meilleure qualité disponible.
+  const banners = useBannerJob((signal) => fetch("/api/banners", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: data.url, quality: data.qualities[0]?.id }), signal }));
+  const download = (body: Record<string, unknown>): Parameters<typeof requestFile>[1] => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: data.url, ...body }) });
+  // Pour le son, le flux le plus léger suffit : la piste audio est la même.
+  const lightest = data.qualities[data.qualities.length - 1]?.id;
   const videoOptions: Option[] = data.qualities.map((q, i) => ({
     id: q.id,
     label: [i === 0 ? `${q.label} (meilleure)` : q.label, q.codec, q.sizeBytes ? formatBytes(q.sizeBytes) : null].filter(Boolean).join(" · "),
@@ -320,22 +363,12 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
       ]}
     >
       {data.linkDownload ? (
-        <Exporter
-          cleanSource
-          videoOptions={videoOptions}
-          run={(format, video, audio, onPhase, signal) =>
-            requestFile(
-              "/api/download",
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                // Pour le son, le flux le plus léger suffit : la piste audio est la même.
-                body: JSON.stringify(format === "mp4" ? { url: data.url, format, quality: video } : { url: data.url, format, quality: data.qualities[data.qualities.length - 1].id, bitrate: Number(audio) }),
-              },
-              onPhase,
-              signal,
-            )
-          }
+        <ModePanels
+          mode={mode}
+          autoAnalyse
+          banners={banners}
+          video={<VideoPanel cleanSource options={videoOptions} run={(quality, onPhase, signal) => requestFile("/api/download", download({ format: "mp4", quality }), onPhase, signal)} />}
+          audio={<AudioPanel run={(format, bitrate, onPhase, signal) => requestFile("/api/download", download({ format, quality: lightest, bitrate: Number(bitrate) }), onPhase, signal)} />}
         />
       ) : (
         <div className="mt-5 border-t border-line pt-5">
@@ -358,8 +391,10 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
 
 /* ---------- Résultat : fichier local ---------- */
 
-function FileResult({ source, onReset, onMeta }: { source: Extract<Source, { kind: "file" }>; onReset: () => void; onMeta: (shortSide: number | undefined, duration: number | undefined) => void }) {
+function FileResult({ source, mode, onReset, onMeta }: { source: Extract<Source, { kind: "file" }>; mode: Mode; onReset: () => void; onMeta: (shortSide: number | undefined, duration: number | undefined) => void }) {
   const { file } = source;
+  const banners = useBannerJob((signal) => fetch(`/api/banners?${new URLSearchParams({ name: file.name })}`, { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file, signal }));
+  const convert = (q: Record<string, string>): [string, RequestInit] => [`/api/convert?${new URLSearchParams({ ...q, name: file.name })}`, { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file }];
   const isAudio = file.type.startsWith("audio/");
   const videoOptions: Option[] = isAudio
     ? []
@@ -401,130 +436,124 @@ function FileResult({ source, onReset, onMeta }: { source: Extract<Source, { kin
         { label: "Définition", value: source.shortSide ? `${source.shortSide}p` : undefined },
       ]}
     >
-      <Exporter
-        videoOptions={videoOptions}
-        run={(format, video, audio, onPhase, signal) => {
-          const q = new URLSearchParams({ format, name: file.name });
-          q.set(format === "mp4" ? "target" : "bitrate", format === "mp4" ? video : audio);
-          return requestFile(`/api/convert?${q}`, { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file }, onPhase, signal);
-        }}
+      <ModePanels
+        mode={mode}
+        banners={isAudio ? undefined : banners}
+        bannerIntro="Le fichier est envoyé au serveur pour être analysé, puis supprimé après 20 minutes d'inactivité."
+        video={isAudio ? undefined : <VideoPanel options={videoOptions} run={(quality, onPhase, signal) => requestFile(...convert({ format: "mp4", target: quality }), onPhase, signal)} />}
+        audio={<AudioPanel run={(format, bitrate, onPhase, signal) => requestFile(...convert({ format, bitrate }), onPhase, signal)} />}
       />
     </ResultLayout>
   );
 }
 
-/* ---------- Les deux actions : vidéo et son ---------- */
+/* ---------- Les trois modes : vidéo, audio, bannières ---------- */
 
-const audioOptions: Option[] = MP3_BITRATES.map((b) => ({ id: String(b), label: `${b} kbps${b === 320 ? " (maximum)" : b === 128 ? " (léger)" : ""}` }));
+const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: "video", label: "Vidéo", icon: <Film className="h-4 w-4" /> },
+  { id: "audio", label: "Audio", icon: <Music className="h-4 w-4" /> },
+  { id: "banners", label: "Bannières", icon: <LayoutGrid className="h-4 w-4" /> },
+];
 
-function Exporter({ videoOptions, cleanSource = false, run }: {
-  videoOptions: Option[];
-  /** Vrai lorsque la source est le flux d'origine TikTok, sans filigrane. */
-  cleanSource?: boolean;
-  run: (format: OutputFormat, video: string, audio: string, onPhase: (p: DownloadPhase) => void, signal: AbortSignal) => Promise<void>;
+function ModePanels({ mode, video, audio, banners, bannerIntro, autoAnalyse = false }: {
+  mode: Mode;
+  video?: React.ReactNode;
+  audio: React.ReactNode;
+  /** Absent quand la source n'a pas d'image (fichier audio). */
+  banners?: BannerJobHandle;
+  bannerIntro?: string;
+  /** En mode Auto, lancer l'analyse des bannières sans attendre (liens uniquement). */
+  autoAnalyse?: boolean;
 }) {
-  const [video, setVideo] = useState(videoOptions[0]?.id ?? "");
-  const [audio, setAudio] = useState("192");
-  const [active, setActive] = useState<OutputFormat | null>(null);
-  const [phase, setPhase] = useState<DownloadPhase | null>(null);
-  const [error, setError] = useState<{ format: OutputFormat; message: string } | null>(null);
-  const abort = useRef<AbortController | null>(null);
+  const available = (t: Tab) => (t === "video" ? !!video : t === "banners" ? !!banners : true);
+  const preferred = (m: Mode): Tab => (m !== "auto" && available(m) ? m : video ? "video" : "audio");
+  const [tab, setTab] = useState<Tab>(() => preferred(mode));
+  /** L'utilisateur a choisi lui-même un onglet : le mode Auto ne le déplace plus. */
+  const chosen = useRef(false);
+  const state = banners?.state;
+  const start = banners?.start;
 
-  useEffect(() => () => abort.current?.abort(), []);
-  // Les qualités d'un fichier local ne sont connues qu'après lecture de ses métadonnées.
-  const ids = videoOptions.map((o) => o.id).join(",");
+  // Changer de mode au-dessus du champ ouvre l'onglet correspondant.
+  const firstMode = useRef(true);
   useEffect(() => {
-    setVideo((c) => (ids.split(",").includes(c) ? c : (ids.split(",")[0] ?? "")));
-  }, [ids]);
-
-  const busy = phase?.state === "preparing" || phase?.state === "downloading";
-  const hasVideo = videoOptions.length > 0;
-
-  async function start(format: OutputFormat) {
-    setError(null);
-    setActive(format);
-    abort.current = new AbortController();
-    try {
-      await run(format, video, audio, setPhase, abort.current.signal);
-    } catch (e) {
-      setPhase(null);
-      if ((e as Error).name === "AbortError") return;
-      setError({ format, message: e instanceof DownloadError ? e.message : "Le téléchargement a échoué. Réessayez." });
+    if (firstMode.current) {
+      firstMode.current = false;
+      return;
     }
-  }
+    chosen.current = false;
+    setTab(preferred(mode));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réagit qu'au changement de mode
+  }, [mode]);
 
-  const pct = phase?.state === "downloading" && phase.total ? Math.min(100, Math.round((phase.received / phase.total) * 100)) : null;
+  // L'analyse démarre dès qu'elle est utile : onglet Bannières ouvert, ou mode Auto sur un lien.
+  const wanted = !!banners && (tab === "banners" || (mode === "auto" && autoAnalyse));
+  useEffect(() => {
+    if (wanted && state?.phase === "idle") void start?.();
+  }, [wanted, state?.phase, start]);
+
+  // Mode Auto : si la vidéo est une compilation de bannières, on ouvre l'onglet Bannières.
+  const verdict = state?.phase === "ready" ? state.job.verdict : undefined;
+  useEffect(() => {
+    if (mode === "auto" && verdict === "banners" && !chosen.current) setTab("banners");
+  }, [mode, verdict]);
+
+  const found = state?.phase === "ready" ? state.job.segments.length : 0;
+  const analysing = state?.phase === "starting" || state?.phase === "running";
 
   return (
     <div className="mt-5 border-t border-line pt-5">
-      <div className={cn("grid gap-3", hasVideo && "sm:grid-cols-2")}>
-        {hasVideo && (
-          <div>
-            <Button size="lg" className="h-14 w-full" onClick={() => start("mp4")} disabled={busy || !video} data-testid="download-video">
-              <Download className="h-4.5 w-4.5" /> Télécharger la vidéo
-            </Button>
-            <p className="mt-1.5 text-center text-xs text-muted">{cleanSource ? "MP4 · sans filigrane · avec le son" : "MP4 · avec le son"}</p>
-          </div>
-        )}
-        <div>
-          <Button variant="dark" size="lg" className="h-14 w-full" onClick={() => start("mp3")} disabled={busy} data-testid="download-audio">
-            <Music className="h-4.5 w-4.5" /> Télécharger le son
-          </Button>
-          <p className="mt-1.5 text-center text-xs text-muted">MP3 · piste audio seule</p>
-        </div>
-      </div>
-
-      <div aria-live="polite">
-        {busy && (
-          <div className="tf-rise mt-4 rounded-xl border border-line bg-canvas/60 p-4" data-testid="progress">
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="inline-flex items-center gap-2 font-medium text-ink">
-                <Loader2 className="h-4 w-4 animate-spin text-brand" />
-                {phase?.state === "preparing" ? (active === "mp3" ? "Extraction du son…" : "Préparation de la vidéo…") : `Téléchargement… ${pct !== null ? `${pct} %` : formatBytes(phase?.state === "downloading" ? phase.received : 0)}`}
-              </span>
-              <button type="button" onClick={() => abort.current?.abort()} className="cursor-pointer text-xs font-medium text-muted hover:text-ink">
-                Annuler
-              </button>
-            </div>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}>
-              {pct === null ? <div className="tf-indeterminate h-full w-1/3 rounded-full bg-brand" /> : <div className="h-full rounded-full bg-brand transition-[width] duration-200" style={{ width: `${pct}%` }} />}
-            </div>
-          </div>
-        )}
-        {phase?.state === "saved" && (
-          <Notice tone="success" className="tf-rise mt-4" icon={<Check className="h-4.5 w-4.5" />}>
-            <span data-testid="saved" className="block truncate">
-              <span className="font-medium">{phase.fileName}</span> enregistré sur votre appareil ({formatBytes(phase.size)}).
-            </span>
-          </Notice>
-        )}
-        {error && (
-          <Notice tone="danger" className="tf-rise mt-4" title="Le téléchargement n'a pas abouti" icon={<AlertCircle className="h-4.5 w-4.5" />}>
-            {error.message}
-            <button type="button" onClick={() => start(error.format)} className="mt-2 flex cursor-pointer items-center gap-1.5 font-medium underline underline-offset-4">
-              <RotateCcw className="h-3.5 w-3.5" /> Réessayer
+      <div role="tablist" aria-label="Que voulez-vous récupérer ?" className="grid grid-cols-3 gap-1 rounded-xl bg-canvas p-1">
+        {tabs.map((t) => {
+          const ok = available(t.id);
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              id={`tab-${t.id}`}
+              aria-selected={tab === t.id}
+              aria-controls={`panel-${t.id}`}
+              disabled={!ok}
+              title={ok ? undefined : "Indisponible pour un fichier audio"}
+              onClick={() => {
+                chosen.current = true;
+                setTab(t.id);
+              }}
+              className={cn(
+                "flex h-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45",
+                tab === t.id ? "bg-white text-ink shadow-[0_1px_2px_rgb(32_42_38/0.12)]" : "text-muted hover:text-ink",
+              )}
+            >
+              <span className="max-[359px]:hidden">{t.icon}</span>
+              {t.label}
+              {t.id === "banners" && analysing && tab !== "banners" && <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" aria-label="Analyse en cours" />}
+              {t.id === "banners" && found > 1 && (
+                <span className="rounded-full bg-brand px-1.5 text-[11px] font-semibold leading-[18px] text-white" data-testid="banner-badge">
+                  {found}
+                </span>
+              )}
             </button>
-          </Notice>
-        )}
+          );
+        })}
       </div>
-
-      <div className={cn("mt-5 grid gap-3", hasVideo && "sm:grid-cols-2")}>
-        {hasVideo && (
-          <div>
-            <label htmlFor="video-quality" className="block text-xs font-medium text-muted">
-              Qualité de la vidéo
-            </label>
-            <Select id="video-quality" value={video} onValueChange={setVideo} disabled={busy} className="mt-1.5 h-10 text-sm" options={videoOptions.map((o) => ({ value: o.id, label: o.label }))} />
-          </div>
-        )}
-        <div>
-          <label htmlFor="audio-quality" className="block text-xs font-medium text-muted">
-            Qualité du son
-          </label>
-          <Select id="audio-quality" value={audio} onValueChange={setAudio} disabled={busy} className="mt-1.5 h-10 text-sm" options={audioOptions.map((o) => ({ value: o.id, label: o.label }))} />
+      {mode === "auto" && verdict === "banners" && tab === "banners" && !chosen.current && (
+        <p className="mt-3 text-[13px] leading-5 text-muted" data-testid="auto-note">
+          Mode Auto : cette vidéo contient plusieurs séquences, l&apos;onglet Bannières a été ouvert. La vidéo complète et le son restent disponibles dans les autres onglets.
+        </p>
+      )}
+      {video && (
+        <div role="tabpanel" id="panel-video" aria-labelledby="tab-video" hidden={tab !== "video"} className="mt-4">
+          {video}
         </div>
+      )}
+      <div role="tabpanel" id="panel-audio" aria-labelledby="tab-audio" hidden={tab !== "audio"} className="mt-4">
+        {audio}
       </div>
-      <p className="mt-4 text-center text-xs leading-5 text-muted">Respectez les droits des créateurs : usage personnel ou contenu que vous êtes autorisé à réutiliser.</p>
+      {banners && (
+        <div role="tabpanel" id="panel-banners" aria-labelledby="tab-banners" hidden={tab !== "banners"} className="mt-4">
+          <BannerPanel handle={banners} intro={bannerIntro} />
+        </div>
+      )}
     </div>
   );
 }

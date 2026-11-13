@@ -33,7 +33,7 @@ export function SiteFooter() {
         <div className="col-span-2 sm:col-span-3 md:col-span-1">
           <Logo />
           <p className="mt-4 max-w-xs text-sm leading-6 text-muted">
-            Téléchargez des vidéos TikTok publiques sans filigrane, en MP4 ou MP3, simplement et dans le respect des créateurs.
+            Téléchargez des vidéos TikTok publiques sans filigrane, en vidéo, en audio ou en bannières, simplement et dans le respect des créateurs.
           </p>
         </div>
         {cols.map((c) => (

@@ -6,7 +6,7 @@ Application web pour télécharger des vidéos TikTok **publiques, sans filigran
 
 1. Coller un lien TikTok (`tiktok.com/@compte/video/…`, `vm.tiktok.com/…`, `vt.tiktok.com/…`).
 2. La vidéo est récupérée aussitôt (sans étape intermédiaire) : miniature, lecteur, auteur, durée, qualités disponibles.
-3. Choix du format (MP4 / MP3) et de la qualité.
+3. Choix du mode : **Vidéo** (MP4, qualité au choix), **Audio** (MP3 ou M4A, débit au choix), **Bannières** (découpage en séquences) ou **Auto** (TokFlow propose le mode adapté).
 4. Téléchargement direct sur l'appareil.
 
 Si un lien ne peut pas être traité, la raison est affichée et une alternative est proposée (conversion d'un fichier local, ouverture sur TikTok).
@@ -21,6 +21,18 @@ TokFlow **ne retouche jamais l'image** (ni flou, ni recadrage, ni effacement). T
 - Cette méthode n'est **pas couverte par les conditions d'utilisation de TikTok**, qui encadrent l'accès automatisé, et le téléchargement de contenus de tiers relève du droit d'auteur local. L'exploitant du service en porte la responsabilité : faites valider ce point juridiquement avant une exploitation commerciale.
 - TikTok peut modifier ses pages ou bloquer des plages d'IP de datacenters. Gardez yt-dlp à jour (un redéploiement réinstalle la dernière version).
 - `TOKFLOW_LINK_ENGINE=none` désactive la récupération par lien et ne conserve que la conversion de fichiers.
+
+## Mode Bannières
+
+Certaines vidéos TikTok enchaînent plusieurs séquences courtes (bannières animées, fonds, boucles). Le mode Bannières les sépare pour les télécharger une par une ou dans une archive ZIP.
+
+- **Détection** (`src/lib/media/banners/detect.ts`, module pur et testé) : chaque image est réduite en 32×32 et résumée zone par zone (grille 4×4 : teintes, luminosité, composition). Une frontière est retenue quand les images d'avant et d'après diffèrent nettement dans au moins un quart de l'écran, plus que l'agitation interne de chaque plan. Coupes franches et fondus sont traités séparément. Trois sensibilités (faible, normale, élevée).
+- **Verdict honnête** : `banners` (séquences de durée comparable), `uncertain` (découpage irrégulier, à vérifier), `single` (un seul plan). L'outil ne « sait » pas ce qu'est une bannière : il repère des changements d'image. Une bannière qui contient elle-même des changements de plan sera découpée en plusieurs morceaux ; l'utilisateur peut alors **fusionner** des séquences, **ajuster** le début et la fin à 0,1 s près, ou baisser la sensibilité.
+- **Extraction** (`extract.ts`) : exacte à l'image près. Copie sans réencodage quand la séquence commence et finit sur des images clés, réencodage H.264 sinon. L'audio est conservé.
+- **Stockage** : la vidéo source reste sur le disque temporaire pendant `BANNER_TTL_MINUTES` (20 min par défaut), puis est supprimée ; au plus `BANNER_MAX_JOBS` analyses sont gardées. Le registre est en mémoire : un redémarrage du serveur fait expirer les analyses en cours (l'interface l'indique et propose de relancer).
+- **Coût** : l'analyse décode toute la vidéo. Environ 2 s pour 30 s de vidéo 720p sur 2 cœurs ; nettement plus sur une instance gratuite Render (fraction de CPU).
+
+Mesures sur les vidéos de test (`scripts/make-banner-fixture.py`) : coupes franches, fondus, effets (flash, zoom), séquences proches, 14 bannières mélangées, plan unique : toutes les frontières retrouvées en sensibilité normale, sans fausse détection.
 
 ## Stack
 

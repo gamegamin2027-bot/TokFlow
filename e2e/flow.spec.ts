@@ -26,6 +26,12 @@ const paste = (page: Page, text: string) =>
     el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
   }, text);
 
+// Les tests à réponses simulées n'ont pas à lancer une vraie analyse de bannières (mode Auto).
+test.beforeEach(async ({ page }, info) => {
+  if (/réel/i.test(info.titlePath.join(" "))) return;
+  await page.route("**/api/banners", (r) => r.fulfill({ status: 503, json: { error: { code: "BUSY", message: "Analyse désactivée dans ce test." } } }));
+});
+
 test("coller un lien lance la récupération sans autre action", async ({ page }) => {
   let calls = 0;
   await page.route("**/api/resolve", async (r) => {
@@ -46,8 +52,13 @@ test("coller un lien lance la récupération sans autre action", async ({ page }
   await expect(result.getByRole("button", { name: "Lire la vidéo" })).toBeVisible();
   await expect(result).toContainText("0:42");
   await expect(result).toContainText("@demo");
+  // Les trois modes sont proposés ; l'onglet Vidéo est ouvert par défaut.
+  await expect(result.getByRole("tab")).toHaveText([/Vidéo/, /Audio/, /Bannières/]);
+  await expect(result.getByRole("tab", { name: "Vidéo" })).toHaveAttribute("aria-selected", "true");
   await expect(result.getByRole("button", { name: "Télécharger la vidéo" })).toBeVisible();
+  await result.getByRole("tab", { name: "Audio" }).click();
   await expect(result.getByRole("button", { name: "Télécharger le son" })).toBeVisible();
+  await expect(result.getByRole("button", { name: "Télécharger la vidéo" })).toBeHidden();
   await expect(result.locator("a")).toHaveCount(0);
   await result.getByRole("button", { name: "Lire la vidéo" }).click();
   await expect(result.locator("iframe")).toHaveAttribute("src", video.playerUrl);
@@ -70,18 +81,28 @@ test("la touche Entrée lance la récupération ; vidéo puis son se télécharg
 
   await choose(page, result.getByLabel("Qualité de la vidéo"), /^540p/);
   let download = page.waitForEvent("download");
+  await result.getByRole("tab", { name: "Vidéo" }).click();
   await result.getByRole("button", { name: "Télécharger la vidéo" }).click();
   expect((await download).suggestedFilename()).toBe("tiktok-demo.mp4");
-  await expect(result.getByTestId("saved")).toContainText("tiktok-demo.mp4");
+  await expect(result.locator('[data-testid="saved"]:visible')).toContainText("tiktok-demo.mp4");
 
   download = page.waitForEvent("download");
+  await result.getByRole("tab", { name: "Audio" }).click();
   await result.getByRole("button", { name: "Télécharger le son" }).click();
   expect((await download).suggestedFilename()).toBe("tiktok-demo.mp3");
-  await expect(result.getByTestId("saved")).toContainText("tiktok-demo.mp3");
+  await expect(result.locator('[data-testid="saved"]:visible')).toContainText("tiktok-demo.mp3");
+
+  // Le son est aussi proposé en M4A (piste d'origine).
+  await choose(page, result.getByLabel("Format du son"), /^M4A/);
+  await expect(result.getByLabel("Qualité du son")).toHaveCount(0);
+  download = page.waitForEvent("download");
+  await result.getByRole("button", { name: "Télécharger le son" }).click();
+  await download;
 
   expect(payloads).toEqual([
     { url: video.url, format: "mp4", quality: "h264_540p_1-0" },
     { url: video.url, format: "mp3", quality: "h264_540p_1-0", bitrate: 192 },
+    { url: video.url, format: "m4a", quality: "h264_540p_1-0", bitrate: 192 },
   ]);
 });
 
@@ -145,10 +166,11 @@ test("une erreur serveur pendant le téléchargement est affichée avec « Rées
   await field(page).fill(video.url);
   await field(page).press("Enter");
   const result = page.getByTestId("result");
+  await result.getByRole("tab", { name: "Audio" }).click();
   await result.getByRole("button", { name: "Télécharger le son" }).click();
   await expect(result).toContainText("Le service traite déjà plusieurs fichiers.");
   await expect(result.getByRole("button", { name: "Réessayer" })).toBeVisible();
-  await expect(result.getByTestId("saved")).toHaveCount(0);
+  await expect(result.locator('[data-testid="saved"]:visible')).toHaveCount(0);
 });
 
 test("une vidéo sans source sans filigrane : limite expliquée, aucun bouton de téléchargement", async ({ page }) => {
@@ -176,12 +198,21 @@ test("conversion réelle d'un fichier importé en MP4 et en MP3 (FFmpeg, sans si
   await page.keyboard.press("Escape");
 
   let download = page.waitForEvent("download");
+  await result.getByRole("tab", { name: "Audio" }).click();
   await result.getByRole("button", { name: "Télécharger le son" }).click();
   let file = await download;
   expect(file.suggestedFilename()).toBe("sample.mp3");
   expect(statSync(await file.path()).size).toBeGreaterThan(5000);
 
+  await choose(page, result.getByLabel("Format du son"), /^M4A/);
   download = page.waitForEvent("download");
+  await result.getByRole("button", { name: "Télécharger le son" }).click();
+  file = await download;
+  expect(file.suggestedFilename()).toBe("sample.m4a");
+  expect(statSync(await file.path()).size).toBeGreaterThan(5000);
+
+  download = page.waitForEvent("download");
+  await result.getByRole("tab", { name: "Vidéo" }).click();
   await result.getByRole("button", { name: "Télécharger la vidéo" }).click();
   file = await download;
   expect(file.suggestedFilename()).toBe("sample.mp4");
@@ -201,15 +232,24 @@ test.describe("TikTok réel (E2E_LIVE=1)", () => {
     await expect(result).toContainText("0:10");
 
     let download = page.waitForEvent("download", { timeout: 80_000 });
+    await result.getByRole("tab", { name: "Vidéo" }).click();
     await result.getByRole("button", { name: "Télécharger la vidéo" }).click();
     let file = await download;
     expect(file.suggestedFilename()).toMatch(/^TokFlow-\d+\.mp4$/);
     expect(statSync(await file.path()).size).toBeGreaterThan(500_000);
 
     download = page.waitForEvent("download", { timeout: 80_000 });
+    await result.getByRole("tab", { name: "Audio" }).click();
     await result.getByRole("button", { name: "Télécharger le son" }).click();
     file = await download;
     expect(file.suggestedFilename()).toMatch(/^TokFlow-\d+\.mp3$/);
+    expect(statSync(await file.path()).size).toBeGreaterThan(50_000);
+
+    await choose(page, result.getByLabel("Format du son"), /^M4A/);
+    download = page.waitForEvent("download", { timeout: 80_000 });
+    await result.getByRole("button", { name: "Télécharger le son" }).click();
+    file = await download;
+    expect(file.suggestedFilename()).toMatch(/^TokFlow-\d+\.m4a$/);
     expect(statSync(await file.path()).size).toBeGreaterThan(50_000);
   });
 

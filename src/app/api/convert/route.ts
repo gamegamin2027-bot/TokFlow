@@ -4,7 +4,7 @@ import { ApiError, errorResponse } from "@/lib/errors";
 import { AUDIO_MIME, canCopyToM4a, m4aArgs, mp3Args } from "@/lib/media/audio";
 import { convert, probe } from "@/lib/media/ffmpeg";
 import { isMp3Bitrate, isOutputFormat, parseMp4Target, safeFileName } from "@/lib/media/formats";
-import { acquireJob, createWorkDir, fileDownloadResponse } from "@/lib/media/jobs";
+import { createWorkDir, fileDownloadResponse, waitForJob } from "@/lib/media/jobs";
 import { assertUploadAllowed, receiveUpload } from "@/lib/media/upload";
 import { mp4Args } from "@/lib/media/video";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
     assertUploadAllowed(req);
 
-    release = acquireJob();
+    release = await waitForJob(20_000); // courte file d'attente plutôt qu'un refus immédiat
     const work = await createWorkDir();
     cleanup = work.cleanup;
 
