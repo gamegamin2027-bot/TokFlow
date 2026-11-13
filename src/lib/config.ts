@@ -8,6 +8,19 @@ function int(name: string, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+export function parseProxy(raw: string | undefined): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  try {
+    const u = new URL(value);
+    if (!["http:", "https:", "socks5:", "socks5h:"].includes(u.protocol) || !u.hostname) throw new Error();
+    return value;
+  } catch {
+    console.error("[tokflow] TOKFLOW_PROXY_URL ignorée : format attendu http(s)://utilisateur:motdepasse@hôte:port ou socks5://…");
+    return null;
+  }
+}
+
 export const config = {
   /** Binaire FFmpeg (présent dans l'image Docker). */
   ffmpegPath: process.env.FFMPEG_PATH || "ffmpeg",
@@ -19,6 +32,8 @@ export const config = {
    */
   linkEngine: process.env.TOKFLOW_LINK_ENGINE === "none" ? ("none" as const) : ("ytdlp" as const),
   ytdlpPath: process.env.YTDLP_PATH || "yt-dlp",
+  /** Proxy sortant facultatif du moteur (http, https, socks5). Vide = connexion directe. */
+  proxyUrl: parseProxy(process.env.TOKFLOW_PROXY_URL),
   maxUploadBytes: int("MAX_UPLOAD_MB", 200) * 1024 * 1024,
   maxDurationSeconds: int("MAX_DURATION_SECONDS", 900),
   maxConcurrentJobs: int("MAX_CONCURRENT_JOBS", 2),

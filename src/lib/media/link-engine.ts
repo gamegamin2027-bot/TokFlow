@@ -22,10 +22,22 @@ export type LinkMetadata = {
 
 type YtFormat = { format_id?: string; width?: number; height?: number; vcodec?: string; acodec?: string; filesize?: number; tbr?: number; format_note?: string };
 
+/** Arguments réseau communs : le proxy sortant, s'il est configuré. */
+export function networkArgs(proxyUrl: string | null = config.proxyUrl): string[] {
+  return proxyUrl ? ["--proxy", proxyUrl] : [];
+}
+
+/** Retire l'adresse du proxy (et ses identifiants) de tout texte journalisé ou renvoyé. */
+export function redactProxy(text: string, proxyUrl: string | null = config.proxyUrl): string {
+  let out = proxyUrl ? text.split(proxyUrl).join("[proxy]") : text;
+  out = out.replace(/\b((?:https?|socks5h?):\/\/)[^\s/@:]+:[^\s/@]+@/gi, "$1***@");
+  return out;
+}
+
 function exec(args: string[], timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(config.ytdlpPath, args, { timeout: timeoutMs, maxBuffer: 20 * 1024 * 1024, killSignal: "SIGKILL" }, (err, stdout, stderr) => {
-      if (err) reject(Object.assign(err, { stderr }));
+    execFile(config.ytdlpPath, [...networkArgs(), ...args], { timeout: timeoutMs, maxBuffer: 20 * 1024 * 1024, killSignal: "SIGKILL" }, (err, stdout, stderr) => {
+      if (err) reject(Object.assign(err, { stderr: redactProxy(String(stderr)) }));
       else resolve(stdout);
     });
   });
@@ -50,6 +62,7 @@ export function classifyEngineError(stderr: string): ApiError {
   if (AMBIGUOUS_REFUSAL.test(stderr)) {
     return withDetail(new ApiError("UPSTREAM_ERROR", "TikTok bloque l'accès à cette vidéo depuis notre serveur (restriction régionale ou adresse refusée). Elle existe peut-être, mais nous ne pouvons pas la récupérer."));
   }
+  if (/proxy/i.test(stderr)) return withDetail(new ApiError("UPSTREAM_ERROR", "Le relais réseau du serveur ne répond pas. Réessayez dans quelques minutes."));
   if (/403|forbidden|captcha|429|too many requests|unable to extract|impersonat|unexpected response|timed out|connection|temporar|5\d\d/i.test(stderr)) {
     return withDetail(new ApiError("UPSTREAM_ERROR", "TikTok ne répond pas correctement à notre serveur pour le moment. Réessayez dans quelques minutes."));
   }

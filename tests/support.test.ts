@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/errors";
-import { classifyEngineError } from "@/lib/media/link-engine";
+import { parseProxy } from "@/lib/config";
+import { classifyEngineError, networkArgs, redactProxy } from "@/lib/media/link-engine";
 import { emailStatus, sendEmail } from "@/lib/server/email";
 import { newTicketId, validateTicketInput } from "@/lib/server/support";
 import { CATEGORIES, STATUSES } from "@/lib/support-shared";
@@ -66,5 +67,25 @@ describe("e-mail", () => {
     await expect(sendEmail({ to: "a@example.com", subject: "s", text: "t" })).rejects.toMatchObject({ code: "EMAIL_NOT_CONFIGURED", message: expect.stringContaining("RESEND_API_KEY, EMAIL_FROM") });
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
+  });
+});
+
+describe("proxy sortant", () => {
+  const proxy = "http://user:s3cret@proxy.example.com:8080";
+  it("n'ajoute aucun argument sans proxy", () => expect(networkArgs(null)).toEqual([]));
+  it("transmet le proxy au moteur", () => expect(networkArgs(proxy)).toEqual(["--proxy", proxy]));
+  it("accepte http, https et socks5, refuse le reste", () => {
+    expect(parseProxy(proxy)).toBe(proxy);
+    expect(parseProxy("socks5://127.0.0.1:1080")).toBe("socks5://127.0.0.1:1080");
+    expect(parseProxy("")).toBeNull();
+    expect(parseProxy("ftp://x")).toBeNull();
+    expect(parseProxy("pas une url")).toBeNull();
+  });
+  it("ne laisse jamais fuiter les identifiants", () => {
+    expect(redactProxy(`ERROR: Unable to connect to proxy ${proxy}`, proxy)).not.toContain("s3cret");
+    expect(redactProxy("via http://a:b@h:1/ x", null)).toBe("via http://***@h:1/ x");
+  });
+  it("signale un proxy en panne sans accuser TikTok", () => {
+    expect(classifyEngineError("ERROR: Unable to connect to proxy").message).toMatch(/relais réseau/);
   });
 });

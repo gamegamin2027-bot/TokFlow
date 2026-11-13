@@ -24,6 +24,7 @@ export async function GET() {
       service: "tokflow",
       linkEngine: config.linkEngine,
       linkEngineVersion: linkDownloadEnabled() ? await linkEngineVersion() : null,
+      proxy: config.proxyUrl ? "configured" : "none",
       ...(await databaseState()),
       email: emailStatus().configured ? "configured" : "missing",
       uptime: Math.round(process.uptime()),

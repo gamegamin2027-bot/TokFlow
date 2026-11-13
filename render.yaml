@@ -27,6 +27,8 @@ services:
         sync: false # facultatif
       - key: TOKFLOW_LINK_ENGINE
         value: ytdlp
+      - key: TOKFLOW_PROXY_URL
+        sync: false # facultatif : proxy sortant du moteur
       - key: MAX_UPLOAD_MB
         value: "200"
       - key: MAX_DURATION_SECONDS

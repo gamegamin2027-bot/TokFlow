@@ -106,3 +106,7 @@ Sans `RESEND_API_KEY` et `EMAIL_FROM`, le bouton « Envoyer » de la réponse es
 `GET /api/health` indique l'état : `database` (`ok` / `missing` / `unreachable`), `founder` (`pending` / `created`), `email` (`configured` / `missing`).
 
 En développement et dans les tests, une base PostgreSQL embarquée (PGlite) est utilisée dans `.data/` ; les tests Playwright démarrent un faux point d'entrée Resend local pour vérifier la requête réellement émise.
+
+## Proxy sortant (facultatif)
+
+Certains hébergeurs (dont Render) ont des adresses IP que TikTok refuse : le moteur reçoit alors « Unexpected response from webpage request ». Définissez `TOKFLOW_PROXY_URL` (`http://utilisateur:motdepasse@hôte:port` ou `socks5://hôte:port`) pour faire passer les requêtes du moteur par un proxy. `GET /api/health` renvoie `proxy: "configured"` quand la variable est prise en compte ; l'adresse et ses identifiants ne sont jamais journalisés ni renvoyés. Vérifiez que les conditions du fournisseur de proxy et celles de TikTok autorisent cet usage.
