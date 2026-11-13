@@ -28,7 +28,7 @@ ENV NODE_ENV=production \
 # FFmpeg (conversions) + yt-dlp (lecture des flux publics) + Tor (relais sortant facultatif)
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg python3 python3-pip ca-certificates tor \
- && pip3 install --no-cache-dir --break-system-packages yt-dlp \
+ && pip3 install --no-cache-dir --break-system-packages "yt-dlp[default,curl-cffi]" \
  && apt-get purge -y python3-pip && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/*
 
