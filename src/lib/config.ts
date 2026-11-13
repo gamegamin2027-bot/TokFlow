@@ -40,7 +40,12 @@ export const config = {
   maxDurationSeconds: int("MAX_DURATION_SECONDS", 900),
   maxConcurrentJobs: int("MAX_CONCURRENT_JOBS", 2),
   jobTimeoutMs: int("JOB_TIMEOUT_SECONDS", 180) * 1000,
+  /** Durée de conservation d'une analyse de bannières inactive (fichiers temporaires). */
+  bannerTtlMs: int("BANNER_TTL_MINUTES", 20) * 60_000,
+  /** Nombre maximal d'analyses de bannières conservées en même temps. */
+  bannerMaxJobs: int("BANNER_MAX_JOBS", 6),
   rateLimit: {
+    filesPerTenMinutes: int("RATE_LIMIT_FILES_PER_10MIN", 300),
     analyzePerMinute: int("RATE_LIMIT_ANALYZE_PER_MIN", 30),
     jobsPerTenMinutes: int("RATE_LIMIT_JOBS_PER_10MIN", 15),
   },
