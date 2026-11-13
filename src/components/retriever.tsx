@@ -8,8 +8,9 @@ import { availableTargets, MP3_BITRATES, type Mp4Target, type OutputFormat } fro
 import { completeInBrowser } from "@/lib/banners/browser-clips";
 import type { BannerSet } from "@/lib/banners/types";
 import type { AnalyzeResult, ApiErrorBody } from "@/lib/types";
-import { cn, formatBytes, formatDuration } from "@/lib/utils";
+import { cn, formatDuration } from "@/lib/utils";
 import { BannerGrid } from "./banner-grid";
+import { useI18n } from "./i18n-provider";
 import { Button } from "./ui/button";
 import { Notice, Select } from "./ui/field";
 
@@ -22,24 +23,6 @@ const looksLikeTikTok = (v: string) => /(^|\/\/|\.)tiktok\.com\//i.test(v.trim()
 /** Lien de publication photo : il ne peut contenir que des bannières, jamais une vidéo. */
 const looksLikePhotoPost = (v: string) => /tiktok\.com\/@[^/?#]+\/photo\/\d+/i.test(v);
 
-const failureTitles: Record<string, string> = {
-  VIDEO_DELETED: "Cette vidéo n'est plus disponible",
-  VIDEO_PRIVATE: "Cette vidéo n'est pas publique",
-  NOT_FOUND: "Vidéo introuvable",
-  INVALID_URL: "Ce lien n'est pas valide",
-  UNSUPPORTED_URL: "Ce lien n'est pas pris en charge",
-  RATE_LIMITED: "Trop de demandes",
-  UPSTREAM_ERROR: "TikTok est momentanément injoignable",
-  TIMEOUT: "TikTok met trop de temps à répondre",
-  // Mode Bannières
-  POST_UNAVAILABLE: "Cette publication n'est plus disponible",
-  LINK_DEAD: "Ce lien ne mène à aucune publication",
-  TIKTOK_UNREACHABLE: "TikTok est momentanément injoignable",
-  TIKTOK_ERROR: "TikTok est momentanément injoignable",
-  TIKTOK_FORMAT: "TikTok a répondu de façon inattendue",
-  TOO_MANY: "Publication trop volumineuse",
-  BUSY: "Le service est très sollicité",
-};
 /** Réponses du mode Bannières qui signifient seulement « ce lien n'est pas un carrousel ». */
 const notBanners = new Set(["NOT_A_CAROUSEL", "NOT_A_POST", "NOT_TIKTOK", "INVALID_URL", "TOO_MANY_REDIRECTS"]);
 
@@ -53,6 +36,8 @@ async function postJson<T>(path: string, body: unknown, signal: AbortSignal): Pr
 
 /** Champ principal : coller un lien lance aussitôt la récupération de la vidéo. */
 export function Retriever() {
+  const { t, apiMessage } = useI18n();
+  const f = t.failures;
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState<false | "video" | "banners">(false);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -80,36 +65,36 @@ export function Retriever() {
       request.current?.abort();
       reset();
       if (!value) {
-        setFailure({ title: "Aucun lien", message: "Collez le lien d'une vidéo ou d'un carrousel de bannières TikTok dans le champ." });
+        setFailure({ title: f.emptyTitle, message: f.empty });
         return;
       }
       const controller = new AbortController();
       request.current = controller;
       setLoading(looksLikePhotoPost(value) ? "banners" : "video");
-      const fail = (err: ApiErrorBody["error"] | null, fallbackTitle: string) => setFailure({ title: (err && failureTitles[err.code]) || fallbackTitle, message: err?.message ?? "Le serveur a répondu de façon inattendue. Réessayez dans un instant." });
+      const fail = (err: ApiErrorBody["error"] | null, fallbackTitle: string) => setFailure({ title: (err && f.titles[err.code]) || fallbackTitle, message: apiMessage(err?.code, err?.message) ?? f.unexpected });
       try {
         // 1. Vidéo. Un lien « /photo/ » ne peut être qu'un carrousel : l'étape est sautée.
         const video = looksLikePhotoPost(value) ? null : await postJson<AnalyzeResult>("/api/resolve", { url: value }, controller.signal);
         if (video?.ok && video.data.linkDownload) {
           setSource({ kind: "link", data: video.data });
         } else if (video && !video.ok && video.error?.code !== "UNSUPPORTED_URL") {
-          fail(video.error, "La vidéo n'a pas pu être récupérée");
+          fail(video.error, f.videoFallback);
         } else {
           // 2. Bannières : carrousel de photos, ou publication sans flux vidéo.
           setLoading("banners");
           const banners = await postJson<BannerSet>("/api/banners", { url: video?.ok ? video.data.url : value }, controller.signal);
           if (banners.ok) setSource({ kind: "banners", data: await completeInBrowser(banners.data, controller.signal) });
           else if (video?.ok) setSource({ kind: "link", data: video.data });
-          else if (video && (!banners.error || notBanners.has(banners.error.code))) fail(video.error, "La vidéo n'a pas pu être récupérée");
-          else fail(banners.error, "Les bannières n'ont pas pu être récupérées");
+          else if (video && (!banners.error || notBanners.has(banners.error.code))) fail(video.error, f.videoFallback);
+          else fail(banners.error, f.bannersFallback);
         }
       } catch (e) {
         if ((e as Error).name === "AbortError") return;
-        setFailure({ title: "Connexion impossible", message: "Le serveur est injoignable. Vérifiez votre connexion Internet, puis réessayez." });
+        setFailure({ title: f.offlineTitle, message: f.offline });
       }
       if (request.current === controller) setLoading(false);
     },
-    [reset],
+    [reset, f, apiMessage],
   );
 
   async function pasteFromClipboard() {
@@ -119,7 +104,7 @@ export function Retriever() {
       setUrl(text);
       void retrieve(text);
     } catch {
-      setFailure({ title: "Presse-papiers inaccessible", message: "Votre navigateur n'autorise pas la lecture du presse-papiers. Collez le lien directement dans le champ." });
+      setFailure({ title: f.clipboardTitle, message: f.clipboard });
     }
   }
 
@@ -129,7 +114,7 @@ export function Retriever() {
     setLoading(false);
     reset();
     if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
-      setFailure({ title: "Fichier trop volumineux", message: `La taille maximale est de ${MAX_UPLOAD_MB} Mo.` });
+      setFailure({ title: f.tooBigTitle, message: f.tooBig(MAX_UPLOAD_MB) });
       return;
     }
     setSource({ kind: "file", file, previewUrl: URL.createObjectURL(file) });
@@ -143,11 +128,11 @@ export function Retriever() {
           void retrieve(url);
         }}
         noValidate
-        className="rounded-2xl border border-line bg-white p-2 shadow-field transition-colors focus-within:border-brand/50"
+        className="rounded-2xl bg-white p-2 shadow-[0_12px_32px_-12px_rgb(10_40_31/0.55)] transition-shadow focus-within:ring-4 focus-within:ring-white/30"
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label htmlFor="tiktok-url" className="sr-only">
-            Lien de la vidéo TikTok
+            {t.tool.label}
           </label>
           <div className="flex min-w-0 flex-1 items-center gap-2.5 pl-3.5">
             <Link2 className="h-4.5 w-4.5 shrink-0 text-muted" aria-hidden />
@@ -158,7 +143,7 @@ export function Retriever() {
               inputMode="url"
               autoComplete="off"
               spellCheck={false}
-              placeholder="Collez un lien TikTok…"
+              placeholder={t.tool.placeholder}
               value={url}
               onChange={(e) => {
                 setUrl(e.target.value);
@@ -186,7 +171,7 @@ export function Retriever() {
                   setUrl("");
                   reset();
                 }}
-                aria-label="Effacer le lien"
+                aria-label={t.tool.clear}
                 className="mr-1 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-canvas hover:text-ink"
               >
                 <X className="h-4 w-4" />
@@ -194,22 +179,26 @@ export function Retriever() {
             ) : (
               <button type="button" onClick={pasteFromClipboard} className="mr-1 flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-line px-2.5 text-xs font-medium text-ink transition-colors hover:bg-canvas">
                 <ClipboardPaste className="h-3.5 w-3.5" aria-hidden />
-                <span className="max-[359px]:sr-only">Coller</span>
+                <span className="max-[359px]:sr-only">{t.tool.paste}</span>
               </button>
             )}
           </div>
           <Button type="submit" size="lg" disabled={!!loading} className="w-full sm:w-auto sm:min-w-[9.5rem]">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {loading ? "Récupération…" : "Récupérer"}
+            {loading ? t.tool.submitting : t.tool.submit}
             {!loading && <ArrowRight className="h-4 w-4" />}
           </Button>
         </div>
       </form>
 
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-muted">
-        <span>Vous avez déjà le fichier ?</span>
-        <button type="button" onClick={() => fileInput.current?.click()} className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 font-medium text-ink underline decoration-line underline-offset-4 transition-colors hover:decoration-ink">
-          <Upload className="h-3.5 w-3.5" /> Convertir un fichier vidéo
+      <p className="mt-3 text-[13px] leading-5 text-white/75">
+        {t.tool.accepted} <span className="whitespace-nowrap">tiktok.com/@…/video/…</span> · <span className="whitespace-nowrap">tiktok.com/@…/photo/…</span> · <span className="whitespace-nowrap">vm.tiktok.com/…</span>
+      </p>
+
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-white/80">
+        <span>{t.tool.haveFile}</span>
+        <button type="button" onClick={() => fileInput.current?.click()} className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 font-medium text-white underline decoration-white/50 underline-offset-4 transition-colors hover:decoration-white focus-visible:outline-white">
+          <Upload className="h-3.5 w-3.5" /> {t.tool.convertVideo}
         </button>
         <input
           ref={fileInput}
@@ -231,14 +220,14 @@ export function Retriever() {
             <span className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1.5 font-medium">
               {url.trim() && (
                 <button type="button" onClick={() => void retrieve(url)} className="inline-flex cursor-pointer items-center gap-1.5 underline underline-offset-4">
-                  <RotateCcw className="h-3.5 w-3.5" /> Réessayer
+                  <RotateCcw className="h-3.5 w-3.5" /> {t.common.retry}
                 </button>
               )}
               <button type="button" onClick={() => fileInput.current?.click()} className="inline-flex cursor-pointer items-center gap-1.5 underline underline-offset-4">
-                <Upload className="h-3.5 w-3.5" /> Convertir un fichier
+                <Upload className="h-3.5 w-3.5" /> {t.tool.convertFile}
               </button>
               <Link href="/assistance" className="underline underline-offset-4">
-                Signaler le problème
+                {t.common.report}
               </Link>
             </span>
           </Notice>
@@ -272,6 +261,7 @@ function ResultLayout({ media, expanded, badge, title, subtitle, meta, onReset, 
   onReset: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
   const shown = meta.filter((m) => m.value);
   const metaRow = shown.length > 0 && (
     <dl className="flex gap-x-7 border-t border-line pt-4 text-xs">
@@ -284,13 +274,13 @@ function ResultLayout({ media, expanded, badge, title, subtitle, meta, onReset, 
     </dl>
   );
   return (
-    <section aria-label="Résultat" data-testid="result" className="rounded-2xl border border-line bg-white p-4 shadow-card sm:p-6">
+    <section aria-label={t.tool.result} data-testid="result" className="rounded-2xl border border-line bg-white p-4 shadow-card sm:p-6">
       <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-x-4 gap-y-4 sm:grid-cols-[136px_minmax(0,1fr)] sm:gap-x-6">
         <div className={cn("relative aspect-[9/16] self-start overflow-hidden rounded-xl border border-line bg-ink", expanded && "col-span-2 mx-auto w-60 sm:col-span-1 sm:w-auto")}>{media}</div>
         <div className={cn("flex min-w-0 flex-col", expanded && "col-span-2 sm:col-span-1")}>
           <div className="flex items-start justify-between gap-2">
             <p className="inline-flex min-h-7 items-center gap-1.5 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-medium leading-4 text-brand-dark">{badge}</p>
-            <button type="button" onClick={onReset} aria-label="Fermer le résultat" className="-mr-1.5 -mt-1.5 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-canvas hover:text-ink">
+            <button type="button" onClick={onReset} aria-label={t.common.closeResult} className="-mr-1.5 -mt-1.5 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-canvas hover:text-ink">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -310,19 +300,20 @@ function ResultLayout({ media, expanded, badge, title, subtitle, meta, onReset, 
 /* ---------- Résultat : lien ---------- */
 
 function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onReset: () => void; onPickFile: () => void }) {
+  const { t, bytes } = useI18n();
   const [playing, setPlaying] = useState(false);
   const videoOptions: Option[] = data.qualities.map((q, i) => ({
     id: q.id,
-    label: [i === 0 ? `${q.label} (meilleure)` : q.label, q.codec, q.sizeBytes ? formatBytes(q.sizeBytes) : null].filter(Boolean).join(" · "),
+    label: [i === 0 ? t.tool.best(q.label) : q.label, q.codec, q.sizeBytes ? bytes(q.sizeBytes) : null].filter(Boolean).join(" · "),
   }));
 
   const media = playing ? (
-    <iframe src={data.playerUrl} title="Lecteur vidéo" allow="fullscreen; encrypted-media" className="h-full w-full" />
+    <iframe src={data.playerUrl} title={t.tool.player} allow="fullscreen; encrypted-media" className="h-full w-full" />
   ) : (
-    <button type="button" onClick={() => setPlaying(true)} className="group absolute inset-0 cursor-pointer" aria-label="Lire la vidéo">
+    <button type="button" onClick={() => setPlaying(true)} className="group absolute inset-0 cursor-pointer" aria-label={t.tool.play}>
       {data.thumbnail ? (
         // eslint-disable-next-line @next/next/no-img-element -- miniature distante servie par notre proxy
-        <img src={data.thumbnail} alt="Miniature de la vidéo" className="h-full w-full object-cover" />
+        <img src={data.thumbnail} alt={t.tool.thumbnail} className="h-full w-full object-cover" />
       ) : (
         <span className="flex h-full w-full bg-gradient-to-b from-[#2a3631] to-ink" />
       )}
@@ -341,15 +332,15 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
       onReset={onReset}
       badge={
         <>
-          <Check className="h-3.5 w-3.5 shrink-0" /> {data.linkDownload ? "Sans filigrane" : "Vidéo trouvée"}
+          <Check className="h-3.5 w-3.5 shrink-0" /> {data.linkDownload ? t.tool.noWatermark : t.tool.found}
         </>
       }
-      title={data.title || `Vidéo de @${data.username}`}
+      title={data.title || t.tool.videoOf(data.username)}
       subtitle={`${data.authorName ? `${data.authorName} · ` : ""}@${data.username}`}
       meta={[
-        { label: "Durée", value: data.durationSeconds ? formatDuration(data.durationSeconds) : undefined },
-        { label: "Qualité max.", value: data.qualities[0]?.label },
-        { label: "Filigrane", value: data.linkDownload ? "Aucun" : undefined },
+        { label: t.tool.duration, value: data.durationSeconds ? formatDuration(data.durationSeconds) : undefined },
+        { label: t.tool.maxQuality, value: data.qualities[0]?.label },
+        { label: t.tool.watermark, value: data.linkDownload ? t.tool.none : undefined },
       ]}
     >
       {data.linkDownload ? (
@@ -372,15 +363,15 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
         />
       ) : (
         <div className="mt-5 border-t border-line pt-5">
-          <Notice tone="warn" title="Cette vidéo ne peut pas être téléchargée pour le moment" icon={<AlertCircle className="h-4.5 w-4.5" />}>
+          <Notice tone="warn" title={t.tool.cannotDownload} icon={<AlertCircle className="h-4.5 w-4.5" />}>
             {data.linkUnavailableReason}
           </Notice>
           <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
             <Button variant="secondary" size="lg" className="sm:flex-1" onClick={onPickFile}>
-              <Upload className="h-4 w-4" /> Convertir un fichier de mon appareil
+              <Upload className="h-4 w-4" /> {t.tool.convertMine}
             </Button>
             <Link href="/assistance" className="inline-flex h-12 items-center justify-center rounded-xl px-5 text-[15px] font-medium text-muted transition-colors hover:bg-ink/5 hover:text-ink">
-              Signaler le problème
+              {t.common.report}
             </Link>
           </div>
         </div>
@@ -392,11 +383,12 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
 /* ---------- Résultat : fichier local ---------- */
 
 function FileResult({ source, onReset, onMeta }: { source: Extract<Source, { kind: "file" }>; onReset: () => void; onMeta: (shortSide: number | undefined, duration: number | undefined) => void }) {
+  const { t, bytes } = useI18n();
   const { file } = source;
   const isAudio = file.type.startsWith("audio/");
   const videoOptions: Option[] = isAudio
     ? []
-    : availableTargets(source.shortSide).map((t: Mp4Target) => (t === "source" ? { id: "source", label: source.shortSide ? `Originale · ${source.shortSide}p · sans ré-encodage` : "Originale · sans ré-encodage" } : { id: String(t), label: `${t}p · ré-encodage H.264` }));
+    : availableTargets(source.shortSide).map((target: Mp4Target) => (target === "source" ? { id: "source", label: t.tool.original(source.shortSide) } : { id: String(target), label: t.tool.reencode(String(target)) }));
 
   return (
     <ResultLayout
@@ -423,15 +415,15 @@ function FileResult({ source, onReset, onMeta }: { source: Extract<Source, { kin
       }
       badge={
         <>
-          <FileVideo className="h-3.5 w-3.5 shrink-0" /> Fichier importé
+          <FileVideo className="h-3.5 w-3.5 shrink-0" /> {t.tool.imported}
         </>
       }
       title={file.name}
-      subtitle="Converti à l'identique, image non retouchée"
+      subtitle={t.tool.importedSub}
       meta={[
-        { label: "Taille", value: formatBytes(file.size) },
-        { label: "Durée", value: source.duration ? formatDuration(source.duration) : undefined },
-        { label: "Définition", value: source.shortSide ? `${source.shortSide}p` : undefined },
+        { label: t.tool.size, value: bytes(file.size) },
+        { label: t.tool.duration, value: source.duration ? formatDuration(source.duration) : undefined },
+        { label: t.tool.definition, value: source.shortSide ? `${source.shortSide}p` : undefined },
       ]}
     >
       <Exporter
@@ -448,7 +440,6 @@ function FileResult({ source, onReset, onMeta }: { source: Extract<Source, { kin
 
 /* ---------- Les deux actions : vidéo et son ---------- */
 
-const audioOptions: Option[] = MP3_BITRATES.map((b) => ({ id: String(b), label: `${b} kbps${b === 320 ? " (maximum)" : b === 128 ? " (léger)" : ""}` }));
 
 function Exporter({ videoOptions, cleanSource = false, run }: {
   videoOptions: Option[];
@@ -456,6 +447,8 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
   cleanSource?: boolean;
   run: (format: OutputFormat, video: string, audio: string, onPhase: (p: DownloadPhase) => void, signal: AbortSignal) => Promise<void>;
 }) {
+  const { t, bytes, apiMessage } = useI18n();
+  const audioOptions: Option[] = MP3_BITRATES.map((b) => ({ id: String(b), label: t.tool.bitrate(b) }));
   const [video, setVideo] = useState(videoOptions[0]?.id ?? "");
   const [audio, setAudio] = useState("192");
   const [active, setActive] = useState<OutputFormat | null>(null);
@@ -482,7 +475,7 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
     } catch (e) {
       setPhase(null);
       if ((e as Error).name === "AbortError") return;
-      setError({ format, message: e instanceof DownloadError ? e.message : "Le téléchargement a échoué. Réessayez." });
+      setError({ format, message: (e instanceof DownloadError && apiMessage(e.code, e.message)) || t.common.downloadFailed });
     }
   }
 
@@ -494,16 +487,16 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
         {hasVideo && (
           <div>
             <Button size="lg" className="h-14 w-full" onClick={() => start("mp4")} disabled={busy || !video} data-testid="download-video">
-              <Download className="h-4.5 w-4.5" /> Télécharger la vidéo
+              <Download className="h-4.5 w-4.5" /> {t.tool.downloadVideo}
             </Button>
-            <p className="mt-1.5 text-center text-xs text-muted">{cleanSource ? "MP4 · sans filigrane · avec le son" : "MP4 · avec le son"}</p>
+            <p className="mt-1.5 text-center text-xs text-muted">{cleanSource ? t.tool.videoHintClean : t.tool.videoHint}</p>
           </div>
         )}
         <div>
           <Button variant="dark" size="lg" className="h-14 w-full" onClick={() => start("mp3")} disabled={busy} data-testid="download-audio">
-            <Music className="h-4.5 w-4.5" /> Télécharger le son
+            <Music className="h-4.5 w-4.5" /> {t.tool.downloadAudio}
           </Button>
-          <p className="mt-1.5 text-center text-xs text-muted">MP3 · piste audio seule</p>
+          <p className="mt-1.5 text-center text-xs text-muted">{t.tool.audioHint}</p>
         </div>
       </div>
 
@@ -513,10 +506,10 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="inline-flex items-center gap-2 font-medium text-ink">
                 <Loader2 className="h-4 w-4 animate-spin text-brand" />
-                {phase?.state === "preparing" ? (active === "mp3" ? "Extraction du son…" : "Préparation de la vidéo…") : `Téléchargement… ${pct !== null ? `${pct} %` : formatBytes(phase?.state === "downloading" ? phase.received : 0)}`}
+                {phase?.state === "preparing" ? (active === "mp3" ? t.tool.extracting : t.tool.preparing) : t.tool.downloading(pct !== null ? t.tool.percent(pct) : bytes(phase?.state === "downloading" ? phase.received : 0))}
               </span>
               <button type="button" onClick={() => abort.current?.abort()} className="cursor-pointer text-xs font-medium text-muted hover:text-ink">
-                Annuler
+                {t.tool.cancel}
               </button>
             </div>
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}>
@@ -527,15 +520,16 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
         {phase?.state === "saved" && (
           <Notice tone="success" className="tf-rise mt-4" icon={<Check className="h-4.5 w-4.5" />}>
             <span data-testid="saved" className="block truncate">
-              <span className="font-medium">{phase.fileName}</span> enregistré sur votre appareil ({formatBytes(phase.size)}).
+              <span className="font-medium">{phase.fileName}</span>
+              {t.tool.saved(bytes(phase.size))}
             </span>
           </Notice>
         )}
         {error && (
-          <Notice tone="danger" className="tf-rise mt-4" title="Le téléchargement n'a pas abouti" icon={<AlertCircle className="h-4.5 w-4.5" />}>
+          <Notice tone="danger" className="tf-rise mt-4" title={t.tool.failedTitle} icon={<AlertCircle className="h-4.5 w-4.5" />}>
             {error.message}
             <button type="button" onClick={() => start(error.format)} className="mt-2 flex cursor-pointer items-center gap-1.5 font-medium underline underline-offset-4">
-              <RotateCcw className="h-3.5 w-3.5" /> Réessayer
+              <RotateCcw className="h-3.5 w-3.5" /> {t.common.retry}
             </button>
           </Notice>
         )}
@@ -545,28 +539,29 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
         {hasVideo && (
           <div>
             <label htmlFor="video-quality" className="block text-xs font-medium text-muted">
-              Qualité de la vidéo
+              {t.tool.videoQuality}
             </label>
             <Select id="video-quality" value={video} onValueChange={setVideo} disabled={busy} className="mt-1.5 h-10 text-sm" options={videoOptions.map((o) => ({ value: o.id, label: o.label }))} />
           </div>
         )}
         <div>
           <label htmlFor="audio-quality" className="block text-xs font-medium text-muted">
-            Qualité du son
+            {t.tool.audioQuality}
           </label>
           <Select id="audio-quality" value={audio} onValueChange={setAudio} disabled={busy} className="mt-1.5 h-10 text-sm" options={audioOptions.map((o) => ({ value: o.id, label: o.label }))} />
         </div>
       </div>
-      <p className="mt-4 text-center text-xs leading-5 text-muted">Respectez les droits des créateurs : usage personnel ou contenu que vous êtes autorisé à réutiliser.</p>
+      <p className="mt-4 text-center text-xs leading-5 text-muted">{t.common.rights}</p>
     </div>
   );
 }
 
 function ResultSkeleton({ banners }: { banners?: boolean }) {
+  const { t } = useI18n();
   return (
     <div className="tf-rise mt-6 rounded-2xl border border-line bg-white p-4 sm:p-6" data-testid="skeleton">
       <p className="mb-4 flex items-center gap-2 text-sm font-medium text-ink">
-        <Loader2 className="h-4 w-4 animate-spin text-brand" /> {banners ? "Recherche des bannières…" : "Récupération de la vidéo…"}
+        <Loader2 className="h-4 w-4 animate-spin text-brand" /> {banners ? t.tool.loadingBanners : t.tool.loadingVideo}
       </p>
       <div className="flex animate-pulse gap-4 sm:gap-6">
         <div className="aspect-[9/16] w-[88px] shrink-0 rounded-xl bg-canvas sm:w-[136px]" />

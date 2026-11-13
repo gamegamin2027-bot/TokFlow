@@ -135,3 +135,13 @@ Certains hébergeurs (dont Render) ont des adresses IP que TikTok refuse : le mo
 `TOKFLOW_TOR=1` démarre un client Tor dans l'image Docker et fait passer le moteur par lui (`proxy: "tor"` dans `/api/health`), avec un circuit distinct par tentative et jusqu'à trois essais. Plus lent et moins fiable : à n'activer que si TikTok refuse l'adresse de l'hébergeur, et si les règles de l'hébergeur l'autorisent.
 
 > L'image installe `yt-dlp[default,curl-cffi]`. Sans ces dépendances réseau, TikTok répond « Unexpected response from webpage request » : c'était la cause réelle de l'échec sur Render, pas l'adresse IP.
+
+## Langues
+
+Le site est proposé en français et en anglais (`src/lib/i18n/`). La langue suit le choix du visiteur (sélecteur dans
+l'en-tête, cookie `tf_lang`), sinon la langue de son navigateur, sinon le français. Les adresses des pages ne changent pas.
+Les pages À propos, Assistance, Confidentialité et Conditions sont rédigées en français uniquement ; en anglais, un
+bandeau le signale. Pour ajouter une langue : un dictionnaire du même type que `fr.ts`, puis son code dans `config.ts`.
+
+`node scripts/verify-browsers.mjs <adresse>` contrôle l'interface sur Chromium, Firefox et WebKit (Safari), en français
+et en anglais, sur ordinateur et sur téléphone.

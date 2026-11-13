@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { getDictionary, getLocale } from "@/lib/i18n/server";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"], display: "swap" });
@@ -7,18 +8,21 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: { default: "TokFlow — Vidéos TikTok sans filigrane, en MP4 ou MP3", template: "%s — TokFlow" },
-  description: "Collez un lien TikTok public : la vidéo s'affiche et se télécharge sans filigrane en MP4, ou en MP3 pour le son seul.",
-  openGraph: { title: "TokFlow", description: "Vidéos TikTok publiques en MP4 ou MP3, en quelques secondes.", type: "website", locale: "fr_FR", siteName: "TokFlow" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return {
+    metadataBase: new URL(siteUrl),
+    title: { default: t.meta.title, template: "%s — TokFlow" },
+    description: t.meta.description,
+    openGraph: { title: "TokFlow", description: t.meta.ogDescription, type: "website", locale: t.meta.ogLocale, siteName: "TokFlow" },
+  };
+}
 
-export const viewport: Viewport = { themeColor: "#F5F4F0", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#176B55", width: "device-width", initialScale: 1 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang={await getLocale()} className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="flex min-h-dvh flex-col font-sans">{children}</body>
     </html>
   );

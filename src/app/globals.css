@@ -43,6 +43,9 @@ body {
   border-radius: 6px;
 }
 
+/* Champ du lien : le contour de focus est porté par son cadre (anneau autour du formulaire). */
+#tiktok-url:focus-visible { outline: none; }
+
 @keyframes tf-indeterminate {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(350%); }
