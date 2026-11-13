@@ -40,7 +40,8 @@ async function visit(name, options) {
   const cards = page.getByTestId("banner-card");
   const count = page.getByTestId("banner-count");
   try {
-    await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 120_000 });
+    await page.goto(BASE, { waitUntil: "load", timeout: 120_000 });
+    await page.waitForTimeout(3000); // site distant : laisser la page devenir interactive avant le collage simulé
 
     // 1. Coller un lien court : la grille apparaît sans autre action.
     await field.focus();
@@ -61,10 +62,11 @@ async function visit(name, options) {
       const video = cards.nth(i).locator("video");
       await video.scrollIntoViewIfNeeded();
       const state = await video.evaluate(async (el) => {
-        for (let t = 0; t < 100 && (el.readyState < 2 || el.currentTime === 0); t++) await new Promise((r) => setTimeout(r, 100));
-        return { w: el.videoWidth, h: el.videoHeight, time: el.currentTime, muted: el.muted, loop: el.loop };
+        for (let t = 0; t < 300 && (el.readyState < 2 || el.currentTime === 0); t++) await new Promise((r) => setTimeout(r, 100));
+        return { w: el.videoWidth, h: el.videoHeight, time: el.currentTime, muted: el.muted, loop: el.loop, ready: el.readyState, net: el.networkState, paused: el.paused, error: el.error?.message ?? null };
       }).catch(() => null);
       if (state && state.h > 0 && state.time > 0) playing++;
+      else console.log(`      aperçu ${i + 1} : ${JSON.stringify(state)}`);
       if (state) sizes.add(`${state.w}x${state.h}`);
     }
     check(playing === 14, "aperçu animé : les 14 vidéos se lisent", `${playing}/14 · ${[...sizes].join(", ")}`);
