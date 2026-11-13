@@ -5,7 +5,7 @@ Application web pour télécharger des vidéos TikTok **publiques, sans filigran
 ## Parcours
 
 1. Coller un lien TikTok (`tiktok.com/@compte/video/…`, `vm.tiktok.com/…`, `vt.tiktok.com/…`).
-2. Analyse : aperçu (miniature, auteur, durée, lecteur officiel) et qualités disponibles.
+2. La vidéo est récupérée aussitôt (sans étape intermédiaire) : miniature, lecteur, auteur, durée, qualités disponibles.
 3. Choix du format (MP4 / MP3) et de la qualité.
 4. Téléchargement direct sur l'appareil.
 
@@ -32,7 +32,7 @@ Next.js 15 (App Router, sortie `standalone`) · React 19 · TypeScript · Tailwi
 src/
   app/
     page.tsx                 Landing (hero, fonctionnalités, étapes, FAQ)
-    a-propos|contact|confidentialite|conditions/
+    (site)/ a-propos|assistance|confidentialite|conditions ; fondateur/
     api/
       health/                GET  — health check (Render)
       analyze/               POST — validation du lien + métadonnées + qualités
@@ -78,10 +78,31 @@ npm run dev          # http://localhost:3000
 
 1. Pousser le dépôt sur GitHub.
 2. Render → **New → Blueprint** → sélectionner le dépôt : `render.yaml` crée le service Docker avec le health check `/api/health`.
-3. Renseigner `NEXT_PUBLIC_SITE_URL` et `NEXT_PUBLIC_CONTACT_EMAIL`.
+3. Renseigner `NEXT_PUBLIC_SITE_URL`, puis les variables de la section « Centre d'assistance et espace fondateur ».
 
 Render fournit `PORT` ; l'image écoute sur `0.0.0.0`. Variables : voir `.env.example`.
 
 ## Avertissement
 
 TokFlow est indépendant de TikTok et de ByteDance Ltd. Les contenus appartiennent à leurs créateurs.
+
+
+## Centre d'assistance et espace fondateur
+
+- **`/assistance`** — formulaire public (sans compte). Chaque demande est enregistrée en base avec un identifiant `TF-XXXXXXXX` ; la confirmation n'est affichée qu'après l'écriture.
+- **`/fondateur`** — « Centre de support » : compteurs, liste, filtres (statut, catégorie), recherche, tri par date, détail, historique, changement de statut, réponse par e-mail.
+- **Compte fondateur** — tant qu'aucun compte n'existe, toute page du site affiche la création du compte fondateur (e-mail + mot de passe). Dès qu'il est créé, l'inscription est fermée (contrainte en base : une seule ligne possible) et les visiteurs ne voient plus aucun écran de connexion. Le fondateur se reconnecte par l'adresse non référencée `/fondateur/connexion`.
+- Pour repartir de zéro : vider les tables `founder`, `sessions`, `tickets`, `ticket_events` (ou recréer la base).
+
+| Variable | Rôle |
+| --- | --- |
+| `DATABASE_URL` | **Obligatoire en production.** Chaîne de connexion PostgreSQL (sur Render : « Internal Database URL »). Les tables sont créées au premier accès. |
+| `RESEND_API_KEY` | Clé API [Resend](https://resend.com) pour envoyer les réponses. |
+| `EMAIL_FROM` | Expéditeur, sur un domaine vérifié chez Resend. Ex. `TokFlow <support@votre-domaine.fr>`. |
+| `EMAIL_REPLY_TO` | Facultatif : adresse recevant les réponses des utilisateurs. |
+
+Sans `RESEND_API_KEY` et `EMAIL_FROM`, le bouton « Envoyer » de la réponse est désactivé et l'interface indique les variables manquantes : aucun envoi n'est simulé. Sans `DATABASE_URL` en production, le téléchargement fonctionne mais le centre d'assistance et l'espace fondateur sont indisponibles.
+
+`GET /api/health` indique l'état : `database` (`ok` / `missing` / `unreachable`), `founder` (`pending` / `created`), `email` (`configured` / `missing`).
+
+En développement et dans les tests, une base PostgreSQL embarquée (PGlite) est utilisée dans `.data/` ; les tests Playwright démarrent un faux point d'entrée Resend local pour vérifier la requête réellement émise.

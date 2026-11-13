@@ -12,7 +12,7 @@ const nav = [
   { href: "/#comment-ca-marche", label: "Comment ça marche" },
   { href: "/#faq", label: "FAQ" },
   { href: "/a-propos", label: "À propos" },
-  { href: "/contact", label: "Contact" },
+  { href: "/assistance", label: "Assistance" },
 ];
 
 export function SiteHeader() {
@@ -48,8 +48,8 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="flex flex-1 items-center justify-end gap-2">
-          <Link href="/#analyser" className={buttonClass("secondary", "sm", "hidden sm:inline-flex")}>
-            Analyser un lien
+          <Link href="/#telecharger" className={buttonClass("secondary", "sm", "hidden sm:inline-flex")}>
+            Télécharger une vidéo
           </Link>
           <button
             type="button"
@@ -72,8 +72,8 @@ export function SiteHeader() {
             </Link>
           ))}
           <div className="px-1 pb-2 pt-2 sm:hidden">
-            <Link href="/#analyser" onClick={() => setOpen(false)} className={buttonClass("primary", "lg", "w-full")}>
-              Analyser un lien
+            <Link href="/#telecharger" onClick={() => setOpen(false)} className={buttonClass("primary", "lg", "w-full")}>
+              Télécharger une vidéo
             </Link>
           </div>
         </nav>

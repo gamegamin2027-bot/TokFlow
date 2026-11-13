@@ -14,7 +14,7 @@ const cols = [
     title: "Société",
     links: [
       { href: "/a-propos", label: "À propos" },
-      { href: "/contact", label: "Contact" },
+      { href: "/assistance", label: "Assistance" },
     ],
   },
   {

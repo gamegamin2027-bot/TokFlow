@@ -1,11 +1,12 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "dark" | "secondary" | "ghost";
 type Size = "sm" | "md" | "lg";
 
 const variants: Record<Variant, string> = {
   primary: "bg-brand text-white hover:bg-brand-dark shadow-[inset_0_1px_0_rgb(255_255_255/0.12)]",
+  dark: "bg-ink text-white hover:bg-[#2c3833] shadow-[inset_0_1px_0_rgb(255_255_255/0.08)]",
   secondary: "bg-white text-ink border border-line hover:border-[#c9d0c8] hover:bg-[#fbfbf9]",
   ghost: "text-muted hover:text-ink hover:bg-ink/5",
 };

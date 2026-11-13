@@ -13,8 +13,10 @@ export type AnalyzeResult = {
   linkDownload: boolean;
   /** Raison lisible lorsque `linkDownload` est faux. */
   linkUnavailableReason?: string;
+  /** Message technique du moteur, pour le diagnostic. */
+  engineDetail?: string;
   /** Qualités du flux d'origine, sans filigrane incrusté. */
   qualities: LinkQuality[];
 };
 
-export type ApiErrorBody = { error: { code: string; message: string } };
+export type ApiErrorBody = { error: { code: string; message: string; fields?: Record<string, string> } };

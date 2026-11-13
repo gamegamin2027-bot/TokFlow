@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    checkRateLimit(`analyze:${clientIp(req)}`, config.rateLimit.analyzePerMinute, 60_000);
+    checkRateLimit(`resolve:${clientIp(req)}`, config.rateLimit.analyzePerMinute, 60_000);
 
     const body = (await req.json().catch(() => null)) as { url?: unknown } | null;
     if (!body) throw new ApiError("INVALID_REQUEST");
@@ -23,9 +23,9 @@ export async function POST(req: Request) {
       linkDownloadEnabled() ? fetchLinkMetadata(link.url) : Promise.resolve(null),
     ]);
 
-    // Une vidéo privée/supprimée est une erreur franche, pas un aperçu vide.
-    for (const r of [oembed, meta]) {
-      if (r.status === "rejected" && r.reason instanceof ApiError && r.reason.code === "NOT_FOUND") throw r.reason;
+    // Une vidéo privée ou supprimée est une erreur franche, jamais un aperçu vide.
+    for (const r of [meta, oembed]) {
+      if (r.status === "rejected" && r.reason instanceof ApiError && ["NOT_FOUND", "VIDEO_DELETED", "VIDEO_PRIVATE"].includes(r.reason.code)) throw r.reason;
     }
     if (oembed.status === "rejected" && meta.status === "rejected") throw oembed.reason;
 
@@ -51,6 +51,7 @@ export async function POST(req: Request) {
       durationSeconds: m?.durationSeconds,
       linkDownload: !linkUnavailableReason,
       linkUnavailableReason,
+      engineDetail: meta.status === "rejected" ? (meta.reason as { detail?: string })?.detail : undefined,
       qualities: linkUnavailableReason ? [] : (m?.qualities ?? []),
     };
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });

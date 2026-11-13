@@ -12,7 +12,7 @@ export default function About() {
       <ul>
         <li><strong>Transparence.</strong> TokFlow n'affiche que les formats et qualités réellement disponibles. Quand un lien ne peut pas être traité, la raison est indiquée et une alternative est proposée.</li>
         <li><strong>Respect des créateurs.</strong> Seules les vidéos publiques sont accessibles, sans compte ni contournement de restriction d'accès. Les contenus restent la propriété de leurs auteurs.</li>
-        <li><strong>Sobriété.</strong> Pas de compte, pas d'historique, pas de traceur publicitaire. Les fichiers sont supprimés dès la fin du transfert.</li>
+        <li><strong>Sobriété.</strong> Pas de compte visiteur, pas d'historique, pas de traceur publicitaire. Les fichiers sont supprimés dès la fin du transfert.</li>
         <li><strong>Qualité.</strong> Le MP4 est livré sans ré-encodage ; le MP3 est encodé avec FFmpeg au débit que vous choisissez.</li>
       </ul>
       <h2>Comment ça fonctionne</h2>

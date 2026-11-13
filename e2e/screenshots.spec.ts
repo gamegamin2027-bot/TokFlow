@@ -9,7 +9,7 @@ test("captures d'écran", async ({ page }, info) => {
   await page.screenshot({ path: `docs/screenshots/${name}-accueil.png`, fullPage: true });
 
   await page.getByLabel("Lien de la vidéo TikTok").fill("https://www.tiktok.com/@scout2015/video/6718335390845095173");
-  await page.getByRole("button", { name: "Analyser le lien" }).click();
+  await page.getByLabel("Lien de la vidéo TikTok").press("Enter");
   await page.getByTestId("result").waitFor({ timeout: 40_000 });
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `docs/screenshots/${name}-resultat.png` });

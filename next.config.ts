@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
+  serverExternalPackages: ["pg", "@electric-sql/pglite"],
+  async redirects() {
+    return [{ source: "/contact", destination: "/assistance", permanent: true }];
+  },
   async headers() {
     return [
       {

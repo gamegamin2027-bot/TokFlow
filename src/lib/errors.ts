@@ -14,6 +14,15 @@ export type ErrorCode =
   | "TOO_LONG"
   | "CONVERSION_FAILED"
   | "TIMEOUT"
+  | "VIDEO_DELETED"
+  | "VIDEO_PRIVATE"
+  | "DB_UNAVAILABLE"
+  | "UNAUTHORIZED"
+  | "FORBIDDEN"
+  | "CONFLICT"
+  | "VALIDATION"
+  | "EMAIL_NOT_CONFIGURED"
+  | "EMAIL_FAILED"
   | "INTERNAL";
 
 const defaults: Record<ErrorCode, { status: number; message: string }> = {
@@ -30,11 +39,22 @@ const defaults: Record<ErrorCode, { status: number; message: string }> = {
   TOO_LONG: { status: 413, message: "Ce contenu dépasse la durée maximale autorisée." },
   CONVERSION_FAILED: { status: 500, message: "La conversion a échoué." },
   TIMEOUT: { status: 504, message: "Le traitement a pris trop de temps et a été interrompu." },
+  VIDEO_DELETED: { status: 404, message: "Elle a été supprimée par son créateur ou retirée par TikTok. TokFlow ne peut donc pas la récupérer." },
+  VIDEO_PRIVATE: { status: 403, message: "Elle est privée ou réservée à certains abonnés. Seules les vidéos publiques peuvent être récupérées." },
+  DB_UNAVAILABLE: { status: 503, message: "La base de données est indisponible. Réessayez dans un instant." },
+  UNAUTHORIZED: { status: 401, message: "Connexion requise." },
+  FORBIDDEN: { status: 403, message: "Action non autorisée." },
+  CONFLICT: { status: 409, message: "Cette action n'est plus possible." },
+  VALIDATION: { status: 422, message: "Certains champs sont invalides." },
+  EMAIL_NOT_CONFIGURED: { status: 503, message: "L'envoi d'e-mails n'est pas configuré." },
+  EMAIL_FAILED: { status: 502, message: "Le fournisseur d'e-mails a refusé l'envoi." },
   INTERNAL: { status: 500, message: "Une erreur inattendue est survenue." },
 };
 
 export class ApiError extends Error {
   readonly status: number;
+  /** Erreurs par champ (formulaires). */
+  fields?: Record<string, string>;
   constructor(readonly code: ErrorCode, message?: string, readonly headers?: Record<string, string>) {
     super(message ?? defaults[code].message);
     this.status = defaults[code].status;
@@ -44,7 +64,7 @@ export class ApiError extends Error {
 export function errorResponse(err: unknown): NextResponse {
   if (err instanceof ApiError) {
     return NextResponse.json(
-      { error: { code: err.code, message: err.message } },
+      { error: { code: err.code, message: err.message, ...(err.fields ? { fields: err.fields } : {}) } },
       { status: err.status, headers: { "Cache-Control": "no-store", ...err.headers } },
     );
   }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { PageShell } from "@/components/page-shell";
 
@@ -7,7 +8,7 @@ export default function Terms() {
   return (
     <PageShell eyebrow="Légal" title="Conditions d'utilisation" intro="En utilisant TokFlow, vous acceptez les conditions ci-dessous. Dernière mise à jour : 13 novembre 2026.">
       <h2>1. Le service</h2>
-      <p>TokFlow permet d'analyser le lien d'une vidéo TikTok publique, d'en afficher un aperçu, et d'en obtenir une copie sans filigrane incrusté au format MP4, ou sa piste audio en MP3. TokFlow récupère le flux de lecture d'origine et ne retouche jamais l'image. Il permet aussi de convertir un fichier importé depuis votre appareil.</p>
+      <p>TokFlow permet de coller le lien d'une vidéo TikTok publique, d'en afficher un aperçu, et d'en obtenir une copie sans filigrane incrusté au format MP4, ou sa piste audio en MP3. TokFlow récupère le flux de lecture d'origine et ne retouche jamais l'image. Il permet aussi de convertir un fichier importé depuis votre appareil.</p>
       <h2>2. Contenus accessibles</h2>
       <p>TokFlow n'accède qu'aux contenus consultables publiquement, sans authentification. Le service ne permet pas d'accéder aux vidéos privées, réservées, supprimées ou soumises à une restriction d'accès, et ne contourne aucune mesure technique de protection.</p>
       <h2>3. Votre responsabilité</h2>
@@ -25,7 +26,7 @@ export default function Terms() {
         <li>Tenter de contourner les limitations techniques du service.</li>
       </ul>
       <h2>5. Signalement</h2>
-      <p>Les créateurs et ayants droit peuvent nous signaler tout usage abusif via la <a href="/contact">page Contact</a>. Nous pouvons bloquer le traitement de certains contenus.</p>
+      <p>Les créateurs et ayants droit peuvent nous signaler tout usage abusif via le <Link href="/assistance">Centre d'assistance</Link>. Nous pouvons bloquer le traitement de certains contenus.</p>
       <h2>6. Disponibilité et garantie</h2>
       <p>Le service est fourni « en l'état », sans garantie de disponibilité. Le traitement d'un lien dépend de la disponibilité publique du contenu sur TikTok et peut échouer ; la raison est alors indiquée.</p>
       <h2>7. Indépendance</h2>
