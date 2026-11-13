@@ -29,8 +29,8 @@ const cols = [
 export function SiteFooter() {
   return (
     <footer className="border-t border-line bg-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:px-8 md:grid-cols-[1.4fr_repeat(3,1fr)]">
-        <div>
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-5 py-14 sm:grid-cols-3 sm:px-8 md:grid-cols-[1.6fr_repeat(3,1fr)]">
+        <div className="col-span-2 sm:col-span-3 md:col-span-1">
           <Logo />
           <p className="mt-4 max-w-xs text-sm leading-6 text-muted">
             Téléchargez des vidéos TikTok publiques sans filigrane, en MP4 ou MP3, simplement et dans le respect des créateurs.
@@ -42,7 +42,7 @@ export function SiteFooter() {
             <ul className="mt-4 space-y-2.5">
               {c.links.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="text-sm text-muted transition-colors hover:text-ink">
+                  <Link href={l.href} className="inline-flex min-h-6 items-center text-sm text-muted transition-colors hover:text-ink">
                     {l.label}
                   </Link>
                 </li>

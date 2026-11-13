@@ -95,7 +95,7 @@ export function Analyzer() {
               inputMode="url"
               autoComplete="off"
               spellCheck={false}
-              placeholder="https://www.tiktok.com/@compte/video/…"
+              placeholder="Collez un lien TikTok…"
               value={url}
               onChange={(e) => {
                 setUrl(e.target.value);
@@ -106,12 +106,13 @@ export function Analyzer() {
               className="h-12 min-w-0 flex-1 bg-transparent text-[15px] text-ink placeholder:text-muted/70 focus:outline-none"
             />
             {url ? (
-              <button type="button" onClick={() => setUrl("")} aria-label="Effacer le lien" className="mr-1 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-ink">
+              <button type="button" onClick={() => setUrl("")} aria-label="Effacer le lien" className="mr-1 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-canvas hover:text-ink">
                 <X className="h-4 w-4" />
               </button>
             ) : (
-              <button type="button" onClick={paste} className="mr-1 hidden h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted hover:bg-canvas hover:text-ink sm:flex">
-                <ClipboardPaste className="h-3.5 w-3.5" /> Coller
+              <button type="button" onClick={paste} className="mr-1 flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-line px-2.5 text-xs font-medium text-ink transition-colors hover:bg-canvas">
+                <ClipboardPaste className="h-3.5 w-3.5" aria-hidden />
+                <span className="max-[359px]:sr-only">Coller</span>
               </button>
             )}
           </div>
@@ -123,9 +124,9 @@ export function Analyzer() {
         </div>
       </form>
 
-      <div className="mt-3 flex flex-col items-center justify-between gap-1.5 px-1 text-xs text-muted sm:flex-row">
-        <span>Vidéos publiques · sans filigrane · MP4 ou MP3</span>
-        <button type="button" onClick={() => fileInput.current?.click()} className="inline-flex cursor-pointer items-center gap-1.5 font-medium text-ink underline-offset-4 hover:underline">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-muted">
+        <span>Vous avez déjà le fichier ?</span>
+        <button type="button" onClick={() => fileInput.current?.click()} className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 font-medium text-ink underline decoration-line underline-offset-4 transition-colors hover:decoration-ink">
           <Upload className="h-3.5 w-3.5" /> Convertir un fichier vidéo
         </button>
         <input
@@ -171,6 +172,73 @@ export function Analyzer() {
 
 /* ---------- Résultat : lien ---------- */
 
+/** En-tête commun aux résultats : média compact à gauche, résumé à droite. */
+function ResultLayout({ media, expanded, badge, title, subtitle, meta, footer, onReset, children }: {
+  media: React.ReactNode;
+  expanded?: boolean;
+  badge: React.ReactNode;
+  title: string;
+  subtitle?: React.ReactNode;
+  meta: { label: string; value?: string }[];
+  footer?: React.ReactNode;
+  onReset: () => void;
+  children: React.ReactNode;
+}) {
+  const shown = meta.filter((m) => m.value);
+  return (
+    <section aria-label="Résultat" data-testid="result" className="rounded-2xl border border-line bg-white p-4 shadow-card sm:p-6">
+      <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-x-4 gap-y-4 sm:grid-cols-[136px_minmax(0,1fr)] sm:gap-x-6">
+        <div className={cn("relative aspect-[9/16] self-start overflow-hidden rounded-xl border border-line bg-ink", expanded && "col-span-2 mx-auto w-56 sm:col-span-1 sm:w-auto")}>{media}</div>
+
+        <div className={cn("flex min-w-0 flex-col", expanded && "col-span-2 sm:col-span-1")}>
+          <div className="flex items-start justify-between gap-2">
+            <p className="inline-flex min-h-7 items-center gap-1.5 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-medium leading-4 text-brand-dark">{badge}</p>
+            <button type="button" onClick={onReset} aria-label="Fermer le résultat" className="-mr-1.5 -mt-1.5 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-canvas hover:text-ink">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <h3 className="mt-2 line-clamp-2 text-[15px] font-semibold leading-6 text-ink sm:text-base" data-testid="result-title">
+            {title}
+          </h3>
+          {subtitle && <p className="mt-0.5 truncate text-sm text-muted">{subtitle}</p>}
+
+          {/* Sur ordinateur, les détails restent dans la colonne de droite pour équilibrer la miniature. */}
+          {shown.length > 0 && (
+            <div className="mt-auto hidden pt-4 sm:block">
+              <MetaRow items={shown} footer={footer} />
+            </div>
+          )}
+        </div>
+
+        {shown.length > 0 && (
+          <div className="col-span-2 sm:hidden">
+            <MetaRow items={shown} footer={footer} />
+          </div>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function MetaRow({ items, footer }: { items: { label: string; value?: string }[]; footer?: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-t border-line pt-4">
+      {items.length > 0 && (
+        <dl className="flex gap-x-7 text-xs">
+          {items.map((m) => (
+            <div key={m.label}>
+              <dt className="text-muted">{m.label}</dt>
+              <dd className="mt-0.5 text-sm font-medium text-ink">{m.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {footer}
+    </div>
+  );
+}
+
 function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onReset: () => void; onPickFile: () => void }) {
   const [playing, setPlaying] = useState(false);
   const videoOptions: Option[] = data.qualities.map((q, i) => ({
@@ -179,62 +247,47 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
     hint: [q.codec, q.sizeBytes ? formatBytes(q.sizeBytes) : null].filter(Boolean).join(" · "),
   }));
 
+  const media = playing ? (
+    <iframe src={data.playerUrl} title="Lecteur TikTok officiel" allow="fullscreen; encrypted-media" className="h-full w-full" />
+  ) : (
+    <button type="button" onClick={() => setPlaying(true)} className="group absolute inset-0 cursor-pointer" aria-label="Lire l'aperçu dans le lecteur TikTok officiel">
+      {data.thumbnail ? (
+        // eslint-disable-next-line @next/next/no-img-element -- miniature distante servie par notre proxy
+        <img src={data.thumbnail} alt="Miniature de la vidéo" className="h-full w-full object-cover" />
+      ) : (
+        <span className="flex h-full w-full items-center justify-center bg-gradient-to-b from-[#2a3631] to-ink" />
+      )}
+      <span className="absolute inset-0 flex items-center justify-center bg-ink/10 transition-colors group-hover:bg-ink/25">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-ink shadow-card transition-transform group-hover:scale-105 sm:h-10 sm:w-10">
+          <Play className="ml-0.5 h-4 w-4 fill-current" />
+        </span>
+      </span>
+    </button>
+  );
+
   return (
-    <Card>
-      <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
-        <div className="relative mx-auto aspect-[9/16] w-40 shrink-0 overflow-hidden rounded-xl border border-line bg-ink sm:mx-0 sm:w-44">
-          {playing ? (
-            <iframe src={data.playerUrl} title="Lecteur TikTok officiel" allow="fullscreen; encrypted-media" className="h-full w-full" />
-          ) : (
-            <button type="button" onClick={() => setPlaying(true)} className="group absolute inset-0 cursor-pointer" aria-label="Lire l'aperçu dans le lecteur TikTok officiel">
-              {data.thumbnail ? (
-                // eslint-disable-next-line @next/next/no-img-element -- miniature distante servie par notre proxy
-                <img src={data.thumbnail} alt="Miniature de la vidéo" className="h-full w-full object-cover" />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center bg-gradient-to-b from-[#2a3631] to-ink">
-                  <Film className="h-7 w-7 text-white/30" />
-                </span>
-              )}
-              <span className="absolute inset-0 flex items-center justify-center bg-ink/10 transition-colors group-hover:bg-ink/25">
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-ink shadow-card">
-                  <Play className="ml-0.5 h-4.5 w-4.5 fill-current" />
-                </span>
-              </span>
-              {data.durationSeconds ? <span className="absolute bottom-2 right-2 rounded-md bg-ink/80 px-1.5 py-0.5 font-mono text-[11px] text-white">{formatDuration(data.durationSeconds)}</span> : null}
-            </button>
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-medium text-brand-dark">
-                <Check className="h-3.5 w-3.5" /> {data.linkDownload ? "Disponible sans filigrane" : "Lien analysé"}
-              </p>
-              <h3 className="mt-3 line-clamp-2 text-base font-semibold leading-6 text-ink" data-testid="result-title">
-                {data.title || `Vidéo de @${data.username}`}
-              </h3>
-              <p className="mt-1 truncate text-sm text-muted">
-                {data.authorName ? `${data.authorName} · ` : ""}@{data.username}
-              </p>
-            </div>
-            <button type="button" onClick={onReset} aria-label="Fermer le résultat" className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-ink">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-line pt-4 text-xs sm:grid-cols-3">
-            <Info label="Durée" value={data.durationSeconds ? formatDuration(data.durationSeconds) : "—"} />
-            <Info label="Qualité max." value={data.qualities[0]?.label ?? "—"} />
-            <Info label="Filigrane" value={data.linkDownload ? "Aucun" : "—"} />
-          </dl>
-
-          <a href={data.url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline">
-            Voir sur TikTok <ExternalLink className="h-3 w-3" />
-          </a>
-        </div>
-      </div>
-
+    <ResultLayout
+      media={media}
+      expanded={playing}
+      onReset={onReset}
+      badge={
+        <>
+          <Check className="h-3.5 w-3.5 shrink-0" /> {data.linkDownload ? "Sans filigrane" : "Lien analysé"}
+        </>
+      }
+      title={data.title || `Vidéo de @${data.username}`}
+      subtitle={`${data.authorName ? `${data.authorName} · ` : ""}@${data.username}`}
+      meta={[
+        { label: "Durée", value: data.durationSeconds ? formatDuration(data.durationSeconds) : undefined },
+        { label: "Qualité max.", value: data.qualities[0]?.label },
+        { label: "Filigrane", value: data.linkDownload ? "Aucun" : undefined },
+      ]}
+      footer={
+        data.linkDownload && <a href={data.url} target="_blank" rel="noopener noreferrer" className="inline-flex h-6 items-center gap-1.5 text-xs font-medium text-brand underline-offset-4 hover:underline">
+          Voir sur TikTok <ExternalLink className="h-3 w-3" />
+        </a>
+      }
+    >
       {data.linkDownload ? (
         <Exporter
           cleanSource
@@ -255,25 +308,24 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
           onPickFile={onPickFile}
         />
       ) : (
-        <div className="mt-6 border-t border-line pt-6">
+        <div className="mt-5 border-t border-line pt-5">
           <Alert tone="warn" title="Téléchargement direct indisponible pour ce lien">
             {data.linkUnavailableReason}
           </Alert>
-          <p className="mt-4 text-sm font-medium text-ink">Alternatives</p>
-          <div className="mt-3 flex flex-col gap-2.5 sm:flex-row">
-            <Button variant="secondary" onClick={onPickFile}>
-              <Upload className="h-4 w-4" /> Convertir un fichier de mon appareil
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+            <Button variant="secondary" size="lg" onClick={onPickFile}>
+              <Upload className="h-4 w-4" /> Convertir un fichier
             </Button>
-            <a href={data.url} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary")}>
+            <a href={data.url} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary", "lg")}>
               <ExternalLink className="h-4 w-4" /> Ouvrir sur TikTok
             </a>
           </div>
-          <p className="mt-3 text-xs leading-5 text-muted">
-            Si le créateur l'autorise, l'application TikTok propose « Enregistrer la vidéo » depuis le menu Partager. Importez ensuite le fichier ici pour le convertir en MP3 ou l'alléger. Attention : un fichier enregistré depuis l'application contient le filigrane TikTok, et TokFlow ne le retire pas.
+          <p className="mt-4 text-xs leading-5 text-muted">
+            Si le créateur l'autorise, l'application TikTok propose « Enregistrer la vidéo » dans le menu Partager. Vous pouvez ensuite importer ce fichier ici pour en extraire le MP3. Il contiendra le filigrane TikTok : TokFlow ne le retire pas.
           </p>
         </div>
       )}
-    </Card>
+    </ResultLayout>
   );
 }
 
@@ -289,50 +341,41 @@ function FileResult({ source, onReset, onMeta }: { source: Extract<Source, { kin
       );
 
   return (
-    <Card>
-      <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
-        <div className="relative mx-auto aspect-[9/16] w-40 shrink-0 overflow-hidden rounded-xl border border-line bg-ink sm:mx-0 sm:w-44">
-          {isAudio ? (
-            <span className="flex h-full w-full items-center justify-center">
-              <Music className="h-7 w-7 text-white/40" />
-            </span>
-          ) : (
-            <video
-              src={source.previewUrl}
-              controls
-              muted
-              playsInline
-              preload="metadata"
-              className="h-full w-full object-contain"
-              onLoadedMetadata={(e) => {
-                const v = e.currentTarget;
-                onMeta(v.videoWidth && v.videoHeight ? Math.min(v.videoWidth, v.videoHeight) : undefined, Number.isFinite(v.duration) ? v.duration : undefined);
-              }}
-            />
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-medium text-brand-dark">
-                <FileVideo className="h-3.5 w-3.5" /> Fichier importé
-              </p>
-              <h3 className="mt-3 truncate text-base font-semibold text-ink" data-testid="result-title">
-                {file.name}
-              </h3>
-              <p className="mt-1 text-sm text-muted">Conversion à l'identique : l'image n'est pas retouchée. Si le fichier contient un filigrane, il est conservé.</p>
-            </div>
-            <button type="button" onClick={onReset} aria-label="Fermer le résultat" className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-ink">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-line pt-4 text-xs sm:grid-cols-3">
-            <Info label="Taille" value={formatBytes(file.size)} />
-            <Info label="Durée" value={source.duration ? formatDuration(source.duration) : "—"} />
-            <Info label="Définition" value={source.shortSide ? `${source.shortSide}p` : "—"} />
-          </dl>
-        </div>
-      </div>
+    <ResultLayout
+      onReset={onReset}
+      media={
+        isAudio ? (
+          <span className="flex h-full w-full items-center justify-center">
+            <Music className="h-6 w-6 text-white/40" />
+          </span>
+        ) : (
+          <video
+            src={source.previewUrl}
+            muted
+            playsInline
+            disableRemotePlayback
+            preload="metadata"
+            className="h-full w-full object-contain"
+            onLoadedMetadata={(e) => {
+              const v = e.currentTarget;
+              onMeta(v.videoWidth && v.videoHeight ? Math.min(v.videoWidth, v.videoHeight) : undefined, Number.isFinite(v.duration) ? v.duration : undefined);
+            }}
+          />
+        )
+      }
+      badge={
+        <>
+          <FileVideo className="h-3.5 w-3.5 shrink-0" /> Fichier importé
+        </>
+      }
+      title={file.name}
+      subtitle="Converti à l'identique, image non retouchée"
+      meta={[
+        { label: "Taille", value: formatBytes(file.size) },
+        { label: "Durée", value: source.duration ? formatDuration(source.duration) : undefined },
+        { label: "Définition", value: source.shortSide ? `${source.shortSide}p` : undefined },
+      ]}
+    >
       <Exporter
         videoOptions={videoOptions}
         initialFormat={isAudio ? "mp3" : "mp4"}
@@ -342,7 +385,7 @@ function FileResult({ source, onReset, onMeta }: { source: Extract<Source, { kin
           return requestFile(`/api/convert?${q}`, { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file }, onPhase, signal);
         }}
       />
-    </Card>
+    </ResultLayout>
   );
 }
 
@@ -397,12 +440,12 @@ function Exporter({
   const pct = phase?.state === "downloading" && phase.total ? Math.min(100, Math.round((phase.received / phase.total) * 100)) : null;
 
   return (
-    <div className="mt-6 border-t border-line pt-6">
+    <div className="mt-5 border-t border-line pt-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <fieldset disabled={busy}>
           <legend className="text-xs font-semibold uppercase tracking-wider text-muted">Format</legend>
           <div className="mt-2.5 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Format">
-            <Choice selected={format === "mp4"} disabled={!videoOptions.length} onSelect={() => setFormat("mp4")} icon={<Film className="h-4 w-4" />} label="MP4" hint="Vidéo + audio" />
+            <Choice selected={format === "mp4"} disabled={!videoOptions.length} onSelect={() => setFormat("mp4")} icon={<Film className="h-4 w-4" />} label="MP4" hint="Avec le son" />
             <Choice selected={format === "mp3"} onSelect={() => setFormat("mp3")} icon={<Music className="h-4 w-4" />} label="MP3" hint="Audio seul" />
           </div>
         </fieldset>
@@ -470,23 +513,6 @@ function Exporter({
 
 /* ---------- Primitives ---------- */
 
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <section aria-label="Résultat" data-testid="result" className="rounded-2xl border border-line bg-white p-5 shadow-card sm:p-6">
-      {children}
-    </section>
-  );
-}
-
-function Info({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-muted">{label}</dt>
-      <dd className={cn("mt-0.5 truncate text-sm font-medium text-ink", mono && "font-mono text-xs leading-5")}>{value}</dd>
-    </div>
-  );
-}
-
 function Choice({ selected, onSelect, label, hint, icon, compact, disabled }: { selected: boolean; onSelect: () => void; label: string; hint?: string; icon?: React.ReactNode; compact?: boolean; disabled?: boolean }) {
   return (
     <button
@@ -525,15 +551,14 @@ function Alert({ tone, title, children, className, id }: { tone: "danger" | "war
 
 function ResultSkeleton() {
   return (
-    <div className="mt-6 rounded-2xl border border-line bg-white p-5 sm:p-6" data-testid="skeleton" aria-label="Analyse en cours">
-      <div className="flex animate-pulse flex-col gap-5 sm:flex-row sm:gap-6">
-        <div className="mx-auto aspect-[9/16] w-40 rounded-xl bg-canvas sm:mx-0 sm:w-44" />
+    <div className="mt-6 rounded-2xl border border-line bg-white p-4 sm:p-6" data-testid="skeleton" aria-label="Analyse en cours">
+      <div className="flex animate-pulse gap-4 sm:gap-6">
+        <div className="aspect-[9/16] w-[88px] shrink-0 rounded-xl bg-canvas sm:w-[136px]" />
         <div className="flex-1 space-y-3 pt-1">
           <div className="h-6 w-28 rounded-full bg-canvas" />
           <div className="h-5 w-4/5 rounded bg-canvas" />
           <div className="h-4 w-2/5 rounded bg-canvas" />
-          <div className="mt-6 h-12 rounded-xl bg-canvas" />
-          <div className="h-12 rounded-xl bg-canvas" />
+          <div className="hidden h-10 rounded-xl bg-canvas sm:block" />
         </div>
       </div>
     </div>

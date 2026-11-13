@@ -39,6 +39,9 @@ function mapError(err: unknown): ApiError {
   if (/Requested format/i.test(msg)) return new ApiError("NOT_FOUND", "Cette qualité n'est plus proposée par TikTok. Relancez l'analyse du lien.");
   if (/private|not available|unavailable|removed|404|log in|login|blocked|restricted/i.test(msg)) return new ApiError("NOT_FOUND");
   console.error("[tokflow] link engine:", msg.slice(-400));
+  if (/403|forbidden|captcha|429|too many requests|unable to extract|impersonat/i.test(msg)) {
+    return new ApiError("UPSTREAM_ERROR", "TikTok a refusé la requête envoyée depuis ce serveur (accès automatisé limité). Réessayez plus tard.");
+  }
   return new ApiError("UPSTREAM_ERROR");
 }
 
@@ -72,6 +75,13 @@ export function buildQualities(formats: YtFormat[]): LinkQuality[] {
       codec: f.vcodec!.startsWith("h264") || f.vcodec!.startsWith("avc") ? "H.264" : "HEVC",
       sizeBytes: f.filesize,
     }));
+}
+
+let versionCache: Promise<string | null> | undefined;
+/** Version du moteur installé, ou null s'il est absent (diagnostic du health check). */
+export function linkEngineVersion(): Promise<string | null> {
+  versionCache ??= exec(["--version"], 10_000).then((v) => v.trim(), () => null);
+  return versionCache;
 }
 
 export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {

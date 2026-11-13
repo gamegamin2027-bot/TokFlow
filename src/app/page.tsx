@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ClipboardPaste, Download, FileAudio, Gauge, MonitorSmartphone, ScanSearch, ShieldCheck, SlidersHorizontal, Video } from "lucide-react";
+import { Check, ClipboardPaste, Download, FileAudio, Gauge, MonitorSmartphone, ScanSearch, ShieldCheck, SlidersHorizontal, Video } from "lucide-react";
 import { Analyzer } from "@/components/analyzer";
 import { Faq, type FaqItem } from "@/components/faq";
 import { buttonClass } from "@/components/ui/button";
@@ -36,19 +36,26 @@ export default function Home() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_50%_0%,#e6f0ea_0%,transparent_70%)]" />
-        <div className="relative mx-auto max-w-6xl px-5 pb-20 pt-16 text-center sm:px-8 sm:pb-28 sm:pt-24">
+        <div className="relative mx-auto max-w-6xl px-5 pb-16 pt-14 text-center sm:px-8 sm:pb-24 sm:pt-24">
           <p className="mx-auto inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-brand" /> Sans filigrane · MP4 et MP3 · sans inscription
+            <span className="h-1.5 w-1.5 rounded-full bg-brand" /> Gratuit · sans inscription
           </p>
-          <h1 className="mx-auto mt-6 max-w-3xl text-balance text-[40px] font-semibold leading-[1.05] tracking-[-0.035em] text-ink sm:text-6xl">
+          <h1 className="mx-auto mt-6 max-w-3xl text-balance text-[clamp(28px,9vw,38px)] font-semibold leading-[1.05] tracking-[-0.035em] text-ink sm:text-6xl lg:text-[68px]">
             Vos vidéos TikTok, <span className="text-brand">sans filigrane.</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-7 text-muted sm:text-lg sm:leading-8">
-            Collez le lien d'une vidéo publique. TokFlow récupère l'image d'origine, sans logo ni nom de compte incrusté, en MP4 avec le son ou en MP3, dans la meilleure qualité disponible.
+          <p className="mx-auto mt-5 max-w-[34rem] text-pretty text-base leading-7 text-muted sm:text-lg sm:leading-8">
+            Collez le lien d'une vidéo publique et récupérez l'image d'origine, en MP4 avec le son ou en MP3.
           </p>
-          <div className="mt-9">
+          <div className="mt-8 sm:mt-10">
             <Analyzer />
           </div>
+          <ul className="mx-auto mt-8 flex max-w-4xl flex-col items-center justify-center gap-x-7 gap-y-2 text-[13px] text-muted md:flex-row">
+            {["Ni logo ni nom de compte incrusté", "Meilleure qualité disponible", "Fichiers supprimés après transfert"].map((t) => (
+              <li key={t} className="inline-flex items-center gap-1.5">
+                <Check className="h-3.5 w-3.5 text-brand" strokeWidth={2.5} /> {t}
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
@@ -97,7 +104,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <Link href="/conditions" className={buttonClass("secondary", "sm")}>
+            <Link href="/conditions" className={buttonClass("secondary", "md", "w-full sm:w-auto")}>
               Lire les conditions
             </Link>
           </div>

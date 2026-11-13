@@ -49,7 +49,7 @@ test("parcours lien → choix du format → téléchargement (TikTok simulé cô
 
   const result = page.getByTestId("result");
   await expect(result.getByTestId("result-title")).toHaveText("Vidéo de démonstration");
-  await expect(result).toContainText("Disponible sans filigrane");
+  await expect(result).toContainText("Sans filigrane");
   await expect(result.getByRole("radio", { name: /1080p · Meilleure/ })).toHaveAttribute("aria-checked", "true");
 
   await result.getByRole("radio", { name: /540p/ }).click();
@@ -82,7 +82,7 @@ test("un lien non téléchargeable explique la limite et propose des alternative
   await page.getByRole("button", { name: "Analyser le lien" }).click();
   const result = page.getByTestId("result");
   await expect(result.getByRole("alert")).toContainText("version avec filigrane");
-  await expect(result.getByRole("button", { name: /Convertir un fichier/ })).toBeVisible();
+  await expect(result.getByRole("button", { name: "Convertir un fichier", exact: true })).toBeVisible();
   await expect(result.getByRole("link", { name: /Ouvrir sur TikTok/ })).toBeVisible();
   await expect(result.getByTestId("download-button")).toHaveCount(0);
 });
@@ -110,7 +110,7 @@ test("lien TikTok réel : analyse puis MP4 sans filigrane (E2E_LIVE=1)", async (
   await page.getByLabel("Lien de la vidéo TikTok").fill("https://www.tiktok.com/@scout2015/video/6718335390845095173");
   await page.getByRole("button", { name: "Analyser le lien" }).click();
   const result = page.getByTestId("result");
-  await expect(result).toContainText("Disponible sans filigrane", { timeout: 40_000 });
+  await expect(result).toContainText("Sans filigrane", { timeout: 40_000 });
   const download = page.waitForEvent("download", { timeout: 80_000 });
   await result.getByRole("button", { name: "Télécharger sans filigrane" }).click();
   expect((await download).suggestedFilename()).toMatch(/^tiktok-scout2015-\d+\.mp4$/);
