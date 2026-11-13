@@ -6,7 +6,7 @@ import { buttonClass } from "@/components/ui/button";
 
 const features = [
   { icon: Video, title: "Vidéo sans filigrane", text: "TokFlow récupère le flux d'origine : ni logo TikTok, ni nom de compte incrusté, avec la piste audio et sans ré-encodage." },
-  { icon: FileAudio, title: "Audio MP3 ou M4A", text: "Extrayez uniquement la bande-son : en MP3 (128, 192 ou 320 kbps) ou en M4A, le son d'origine sans perte." },
+  { icon: FileAudio, title: "Audio MP3", text: "Extrayez uniquement la bande-son, en 128, 192 ou 320 kbps selon votre besoin." },
   { icon: SlidersHorizontal, title: "Meilleure qualité par défaut", text: "La meilleure définition disponible est présélectionnée. Vous pouvez en choisir une autre." },
   { icon: ScanSearch, title: "La vidéo s'affiche aussitôt", text: "Miniature, lecteur, auteur et durée apparaissent sur la page dès que le lien est collé." },
   { icon: MonitorSmartphone, title: "Sur tous vos appareils", text: "Une interface pensée pour le mobile, la tablette et l'ordinateur. Rien à installer." },
@@ -16,7 +16,7 @@ const features = [
 const steps = [
   { icon: ClipboardPaste, title: "Collez le lien", text: "Copiez le lien d'une vidéo TikTok publique depuis le menu Partager, puis collez-le dans le champ. C'est tout." },
   { icon: Gauge, title: "La vidéo apparaît", text: "TokFlow la récupère automatiquement et l'affiche avec ses informations, sans étape intermédiaire." },
-  { icon: Download, title: "Téléchargez", text: "Choisissez Vidéo, Audio ou Bannières : la vidéo sans filigrane (MP4), le son (MP3 ou M4A) ou chaque bannière en fichier séparé." },
+  { icon: Download, title: "Téléchargez", text: "Un bouton pour la vidéo sans filigrane (MP4), un autre pour le son (MP3). Le fichier arrive sur votre appareil." },
 ];
 
 const faq: FaqItem[] = [
@@ -25,9 +25,8 @@ const faq: FaqItem[] = [
   { q: "Dois-je être l'auteur de la vidéo ?", a: "Non. TokFlow traite toute vidéo consultable publiquement. Vous restez toutefois responsable de l'usage du fichier : copie pour usage personnel, ou réutilisation avec l'accord du créateur. Consultez nos conditions d'utilisation." },
   { q: "Pourquoi un lien ne peut-il pas être traité ?", a: "Le plus souvent : la vidéo a été supprimée par son créateur, elle est privée, elle est restreinte dans la région du serveur, il s'agit d'un diaporama photo, ou TikTok est momentanément indisponible. TokFlow indique la raison précise et vous propose de convertir un fichier déjà enregistré sur votre appareil." },
   { q: "Quelle qualité vais-je obtenir ?", a: "Celle que TikTok met publiquement à disposition pour la vidéo, généralement jusqu'en 720p ou 1080p. TokFlow ne suréchantillonne jamais : aucune qualité artificielle n'est proposée." },
-  { q: "Puis-je convertir un fichier que je possède déjà ?", a: "Oui. Cliquez sur « Utiliser un fichier vidéo » pour importer un fichier (jusqu'à 200 Mo), puis extrayez l'audio en MP3 ou réduisez la définition en MP4. L'image n'est pas retouchée : un filigrane déjà présent dans le fichier est conservé." },
-  { q: "À quoi sert le mode Bannières ?", a: "Certaines vidéos regroupent plusieurs bannières animées à la suite. TokFlow repère chaque séquence, vous montre un aperçu, et vous téléchargez celles que vous voulez : une par une, ou plusieurs dans une archive ZIP. Le découpage est automatique et peut se tromper sur des transitions très douces : vous pouvez alors régler le début et la fin de chaque bannière, en fusionner deux ou en couper une." },
-  { q: "Conservez-vous mes vidéos ou mes liens ?", a: "Non. Les fichiers sont traités dans un dossier temporaire puis supprimés dès la fin du transfert. En mode Bannières, la vidéo analysée est gardée le temps de votre sélection, puis supprimée après 20 minutes d'inactivité ou dès que vous fermez le résultat. Aucun compte ni historique n'est créé. Seules les demandes envoyées au Centre d'assistance sont enregistrées." },
+  { q: "Puis-je convertir un fichier que je possède déjà ?", a: "Oui. Cliquez sur « Convertir un fichier vidéo » pour importer un fichier (jusqu'à 200 Mo), puis extrayez l'audio en MP3 ou réduisez la définition en MP4. L'image n'est pas retouchée : un filigrane déjà présent dans le fichier est conservé." },
+  { q: "Conservez-vous mes vidéos ou mes liens ?", a: "Non. Les fichiers sont traités dans un dossier temporaire puis supprimés dès la fin du transfert. Aucun compte ni historique n'est créé. Seules les demandes envoyées au Centre d'assistance sont enregistrées." },
   { q: "TokFlow est-il affilié à TikTok ?", a: "Non. TokFlow est un service indépendant. TikTok est une marque de ByteDance Ltd." },
 ];
 
@@ -45,7 +44,7 @@ export default function Home() {
             Vos vidéos TikTok, <span className="text-brand">sans filigrane.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-[34rem] text-pretty text-base leading-7 text-muted sm:text-lg sm:leading-8">
-            Collez le lien d'une vidéo publique et récupérez la vidéo d'origine en MP4, le son en MP3 ou M4A, ou chaque bannière animée en fichier séparé.
+            Collez le lien d'une vidéo publique et récupérez l'image d'origine, en MP4 avec le son ou en MP3.
           </p>
           <div className="mt-8 sm:mt-10">
             <Retriever />

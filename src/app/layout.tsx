@@ -9,9 +9,9 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: "TokFlow — Vidéos TikTok sans filigrane, vidéo, audio et bannières", template: "%s — TokFlow" },
+  title: { default: "TokFlow — Vidéos TikTok sans filigrane, en MP4 ou MP3", template: "%s — TokFlow" },
   description: "Collez un lien TikTok public : la vidéo s'affiche et se télécharge sans filigrane en MP4, ou en MP3 pour le son seul.",
-  openGraph: { title: "TokFlow", description: "Vidéos TikTok publiques en vidéo, en audio ou découpées en bannières, en quelques secondes.", type: "website", locale: "fr_FR", siteName: "TokFlow" },
+  openGraph: { title: "TokFlow", description: "Vidéos TikTok publiques en MP4 ou MP3, en quelques secondes.", type: "website", locale: "fr_FR", siteName: "TokFlow" },
 };
 
 export const viewport: Viewport = { themeColor: "#F5F4F0", width: "device-width", initialScale: 1 };

@@ -23,7 +23,6 @@ export type ErrorCode =
   | "VALIDATION"
   | "EMAIL_NOT_CONFIGURED"
   | "EMAIL_FAILED"
-  | "EXPIRED"
   | "INTERNAL";
 
 const defaults: Record<ErrorCode, { status: number; message: string }> = {
@@ -49,7 +48,6 @@ const defaults: Record<ErrorCode, { status: number; message: string }> = {
   VALIDATION: { status: 422, message: "Certains champs sont invalides." },
   EMAIL_NOT_CONFIGURED: { status: 503, message: "L'envoi d'e-mails n'est pas configuré." },
   EMAIL_FAILED: { status: 502, message: "Le fournisseur d'e-mails a refusé l'envoi." },
-  EXPIRED: { status: 410, message: "Cette analyse a expiré : les fichiers temporaires ont été supprimés. Relancez la récupération." },
   INTERNAL: { status: 500, message: "Une erreur inattendue est survenue." },
 };
 

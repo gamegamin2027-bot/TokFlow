@@ -15,8 +15,6 @@ export default async function globalSetup() {
   mkdirSync("e2e/.fixtures", { recursive: true });
   const ffmpeg = process.env.FFMPEG_PATH ?? (ffmpegStatic as unknown as string);
   execFileSync(ffmpeg, ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=720x1280:rate=24:duration=2", "-f", "lavfi", "-i", "sine=frequency=440:duration=2", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", "e2e/.fixtures/sample.mp4"]);
-  // Compilation de 6 bannières (coupes franches) pour les tests du mode Bannières.
-  execFileSync("python3", ["scripts/make-banner-fixture.py", ffmpeg, "e2e/.fixtures", "coupes"]);
 
   const sent: Sent[] = [];
   const server = createServer((req, res) => {

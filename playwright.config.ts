@@ -15,15 +15,14 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   globalSetup: "./e2e/global-setup.ts",
-  // Locale UTF-8 pour le navigateur : sans elle, Chromium remplace par « download » les noms de fichiers accentués.
-  use: { baseURL: `http://127.0.0.1:${port}`, locale: "fr-FR", trace: "retain-on-failure", launchOptions: { env: { ...process.env, LANG: "C.UTF-8", LC_ALL: "C.UTF-8" } as Record<string, string> } },
+  use: { baseURL: `http://127.0.0.1:${port}`, locale: "fr-FR", trace: "retain-on-failure" },
   projects: [
     // 1. Base vide : le premier visiteur crée le compte fondateur (testé dans le navigateur).
     { name: "premiere-visite", testMatch: /first-visit\.setup\.ts/, use: desktop },
     // 2. Le reste du site, une fois le fondateur créé.
     { name: "desktop", use: desktop, dependencies: ["premiere-visite"] },
     { name: "tablet", use: { ...devices["Desktop Chrome"], viewport: { width: 820, height: 1180 } }, testMatch: /(screenshots|landing)\.spec\.ts/, dependencies: ["premiere-visite"] },
-    { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /(screenshots|landing|support|flow|banners)\.spec\.ts/, dependencies: ["premiere-visite"] },
+    { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /(screenshots|landing|support|flow)\.spec\.ts/, dependencies: ["premiere-visite"] },
   ],
   webServer: {
     // Base PostgreSQL embarquée neuve à chaque exécution.
