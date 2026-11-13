@@ -28,7 +28,7 @@ const TEST_MEDIA_HOST = process.env.NODE_ENV !== "production" && process.env.BAN
 
 type Stored = { path: string; bytes: number };
 type Item = { n: number; width?: number; height?: number; imageUrls: string[]; clip: Stored | null; image: (Stored & { ext: ImageExt }) | null; pending?: Promise<void> };
-type Job = { id: string; postId: string; author: string; title: string; dir: string; touchedAt: number; clipStatus: ClipStatus; items: Item[] };
+type Job = { id: string; postId: string; author: string; title: string; dir: string; touchedAt: number; clipStatus: ClipStatus; clipIssue?: string; items: Item[] };
 type ImageExt = "jpg" | "webp" | "png";
 export type BannerFile = { data: Buffer; name: string; type: string };
 
@@ -133,6 +133,7 @@ function view(job: Job): BannerSet {
     animatedCount: job.items.filter((i) => i.clip).length,
     clipStatus: job.clipStatus,
     notice: NOTICES[job.clipStatus],
+    clipIssue: job.clipIssue,
     items: job.items.map((i) => ({ n: i.n, animated: Boolean(i.clip), width: i.width, height: i.height, clipBytes: i.clip?.bytes })),
   };
 }
@@ -179,7 +180,8 @@ async function run(rawUrl: unknown, { clipSource, log = () => undefined }: Analy
     [extra] = await Promise.allSettled([skip ? Promise.resolve(null) : wantClips()]);
   }
   const code = (reason: unknown) => (reason instanceof BannerError ? reason.code : String(reason));
-  if (extra.status === "rejected") log(`source de clips (${clipSource?.name}) : ${code(extra.reason)}`);
+  const issue = extra.status === "rejected" ? [code(extra.reason), extra.reason instanceof BannerError ? extra.reason.detail : ""].filter(Boolean).join(" · ") : undefined;
+  if (issue) log(`source de clips (${clipSource?.name}) : ${issue}`);
   if (pub.status === "rejected") log(`page publique : ${code(pub.reason)}`);
   const clipData = extra.status === "fulfilled" ? extra.value : null;
 
@@ -230,6 +232,7 @@ async function run(rawUrl: unknown, { clipSource, log = () => undefined }: Analy
   else if (animated === 0) job.clipStatus = "unavailable";
   else job.clipStatus = animated === job.items.length ? "ok" : "partial";
   if (failed) log(`${failed} clip(s) non récupéré(s)`);
+  job.clipIssue = issue ?? (clipData && clips.length && !aligned ? `CLIPS_MISMATCH · ${clips.length} clips pour ${images.length} images` : failed ? `CLIP_DOWNLOAD · ${failed} sur ${clips.filter(Boolean).length}` : undefined);
 
   if (known) await drop(known);
   state.jobs.set(job.id, job);

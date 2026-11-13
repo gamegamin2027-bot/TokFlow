@@ -13,5 +13,7 @@ export type BannerSet = {
   clipStatus: ClipStatus;
   /** Message à afficher lorsque tout ou partie des animations manque. */
   notice?: string;
+  /** Cause technique de l'absence d'animations (diagnostic). */
+  clipIssue?: string;
   items: BannerItem[];
 };

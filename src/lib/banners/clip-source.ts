@@ -30,18 +30,21 @@ function tikwm({ apiUrl, apiKey, timeoutMs }: { apiUrl: string; apiKey?: string;
       const code = e instanceof BannerError ? e.code : "";
       throw new BannerError(code === "TIMEOUT" ? "CLIPS_TIMEOUT" : code === "TOO_LARGE" ? "CLIPS_FORMAT" : "CLIPS_UNREACHABLE", "Le service de clips n'a pas répondu.", 502);
     }
-    if (res.status === 429) throw new BannerError("CLIPS_QUOTA", "Le service de clips a atteint sa limite d'utilisation.", 502);
-    if (res.status !== 200) throw new BannerError("CLIPS_ERROR", `Le service de clips a répondu par une erreur (${res.status}).`, 502);
+    const detail = (text: string) => `HTTP ${res.status} ${res.headers.get("content-type") ?? ""} ${text.replace(/\s+/g, " ").slice(0, 100)}`.trim();
+    const fail = (code: string, message: string, text = "") => Object.assign(new BannerError(code, message, 502), { detail: detail(text) });
+    const raw = res.body.toString("utf8");
+    if (res.status === 429) throw fail("CLIPS_QUOTA", "Le service de clips a atteint sa limite d'utilisation.");
+    if (res.status !== 200) throw fail("CLIPS_ERROR", `Le service de clips a répondu par une erreur (${res.status}).`, raw);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- réponse externe, vérifiée champ par champ
     let body: any;
     try {
-      body = JSON.parse(res.body.toString("utf8"));
+      body = JSON.parse(raw);
     } catch {
-      throw new BannerError("CLIPS_FORMAT", "Réponse illisible du service de clips.", 502);
+      throw fail("CLIPS_FORMAT", "Réponse illisible du service de clips.", raw);
     }
     if (body?.code !== 0 || typeof body.data !== "object" || !body.data) {
       const quota = /limit|quota|frequen/i.test(String(body?.msg ?? ""));
-      throw new BannerError(quota ? "CLIPS_QUOTA" : "CLIPS_REFUSED", "Le service de clips n'a pas pu traiter cette publication.", 502);
+      throw fail(quota ? "CLIPS_QUOTA" : "CLIPS_REFUSED", "Le service de clips n'a pas pu traiter cette publication.", String(body?.msg ?? ""));
     }
     if (String(body.data.id) !== link.id) throw new BannerError("CLIPS_FORMAT", "Le service de clips a renvoyé une autre publication.", 502);
     const text = (v: unknown) => (typeof v === "string" && v.startsWith("https://") ? v : null);
