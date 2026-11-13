@@ -29,6 +29,9 @@ services:
         value: ytdlp
       - key: TOKFLOW_PROXY_URL
         sync: false # facultatif : proxy sortant du moteur
+      # Bannières : source des animations. "none" = images seules (interrupteur de secours).
+      - key: BANNER_CLIP_SOURCE
+        value: tikwm
       - key: MAX_UPLOAD_MB
         value: "200"
       - key: MAX_DURATION_SECONDS

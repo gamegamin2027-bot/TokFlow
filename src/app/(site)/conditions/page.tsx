@@ -8,9 +8,9 @@ export default function Terms() {
   return (
     <PageShell eyebrow="Légal" title="Conditions d'utilisation" intro="En utilisant TokFlow, vous acceptez les conditions ci-dessous. Dernière mise à jour : 13 novembre 2026.">
       <h2>1. Le service</h2>
-      <p>TokFlow permet de coller le lien d'une vidéo TikTok publique, d'en afficher un aperçu, et d'en obtenir une copie sans filigrane incrusté au format MP4, ou sa piste audio en MP3. TokFlow récupère le flux de lecture d'origine et ne retouche jamais l'image. Il permet aussi de convertir un fichier importé depuis votre appareil.</p>
+      <p>TokFlow permet de coller le lien d'une vidéo TikTok publique, d'en afficher un aperçu, et d'en obtenir une copie sans filigrane incrusté au format MP4, ou sa piste audio en MP3. TokFlow récupère le flux de lecture d'origine et ne retouche jamais l'image. Il permet aussi de récupérer les bannières d'un carrousel public (animation en MP4 lorsqu'elle existe, image sinon), telles que TikTok les conserve, et de convertir un fichier importé depuis votre appareil.</p>
       <h2>2. Contenus accessibles</h2>
-      <p>TokFlow n'accède qu'aux contenus consultables publiquement, sans authentification. Le service ne permet pas d'accéder aux vidéos privées, réservées, supprimées ou soumises à une restriction d'accès, et ne contourne aucune mesure technique de protection.</p>
+      <p>TokFlow n'accède qu'aux contenus consultables publiquement, sans authentification. Le service ne permet pas d'accéder aux vidéos privées, réservées, supprimées ou soumises à une restriction d'accès, et ne contourne aucune mesure technique de protection. Les animations des bannières, que TikTok n'expose pas sur ses pages publiques, sont obtenues par l'intermédiaire d'un service tiers indépendant et non officiel (TikWM), sans lien avec TikTok ; lorsqu'il ne répond pas, seules les images sont proposées.</p>
       <h2>3. Votre responsabilité</h2>
       <ul>
         <li>Les vidéos et musiques appartiennent à leurs créateurs et ayants droit.</li>

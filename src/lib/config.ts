@@ -43,6 +43,10 @@ export const config = {
   rateLimit: {
     analyzePerMinute: int("RATE_LIMIT_ANALYZE_PER_MIN", 30),
     jobsPerTenMinutes: int("RATE_LIMIT_JOBS_PER_10MIN", 15),
+    /** Mode Bannières : analyses, archives et fichiers, par visiteur. */
+    bannersPerTenMinutes: int("RATE_LIMIT_BANNERS_PER_10MIN", 12),
+    bannerZipsPerTenMinutes: int("RATE_LIMIT_BANNER_ZIPS_PER_10MIN", 20),
+    bannerFilesPerTenMinutes: int("RATE_LIMIT_BANNER_FILES_PER_10MIN", 900),
   },
 };
 

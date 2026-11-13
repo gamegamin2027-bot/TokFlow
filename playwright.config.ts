@@ -22,7 +22,7 @@ export default defineConfig({
     // 2. Le reste du site, une fois le fondateur créé.
     { name: "desktop", use: desktop, dependencies: ["premiere-visite"] },
     { name: "tablet", use: { ...devices["Desktop Chrome"], viewport: { width: 820, height: 1180 } }, testMatch: /(screenshots|landing)\.spec\.ts/, dependencies: ["premiere-visite"] },
-    { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /(screenshots|landing|support|flow)\.spec\.ts/, dependencies: ["premiere-visite"] },
+    { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /(screenshots|landing|support|flow|banners)\.spec\.ts/, dependencies: ["premiere-visite"] },
   ],
   webServer: {
     // Base PostgreSQL embarquée neuve à chaque exécution.
@@ -37,6 +37,7 @@ export default defineConfig({
       RATE_LIMIT_ANALYZE_PER_MIN: "1000",
       RATE_LIMIT_JOBS_PER_10MIN: "1000",
       RATE_LIMIT_SUPPORT_PER_HOUR: "1000",
+      RATE_LIMIT_BANNERS_PER_10MIN: "1000",
       ALLOW_EMBEDDED_DB: "1",
       // Chemin absolu : le serveur autonome change de répertoire de travail.
       DATA_DIR: resolve("e2e/.data/pg"),

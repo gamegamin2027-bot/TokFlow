@@ -22,6 +22,25 @@ TokFlow **ne retouche jamais l'image** (ni flou, ni recadrage, ni effacement). T
 - TikTok peut modifier ses pages ou bloquer des plages d'IP de datacenters. Gardez yt-dlp à jour (un redéploiement réinstalle la dernière version).
 - `TOKFLOW_LINK_ENGINE=none` désactive la récupération par lien et ne conserve que la conversion de fichiers.
 
+## Bannières (carrousels de photos)
+
+Coller le lien d'un carrousel (`/photo/…`, lien court, ou publication « vidéo » sans flux vidéo) affiche une grille :
+une carte par bannière, dans l'ordre de la publication, avec aperçu, sélection, téléchargement à l'unité et archive ZIP
+de la sélection (`Banniere_01.mp4`, `Banniere_01.jpg`…). Aucun fichier n'est réencodé ni recadré.
+
+- **Images** : lues sur la page publique de TikTok (`src/lib/banners/public-source.ts`).
+- **Animations (« Live Photos »)** : TikTok ne les expose sur aucune interface publique. Elles sont demandées à TikWM,
+  un service tiers **non officiel et sans lien avec TikTok** (`src/lib/banners/clip-source.ts`, module remplaçable).
+  Seule l'adresse canonique de la publication lui est transmise, et uniquement pour un carrousel. S'il est en panne,
+  limité ou désactivé (`BANNER_CLIP_SOURCE=none`), les bannières sont proposées en image, avec la mention
+  « Image fixe — animation indisponible » : aucune animation n'est jamais fabriquée.
+- **Sécurité** : le visiteur ne fournit jamais d'adresse de fichier ; les médias ne sont téléchargés que depuis les
+  serveurs de fichiers de TikTok, en https, sans suivre de redirection, avec délais et tailles bornés ; limites par
+  visiteur (`RATE_LIMIT_BANNERS_PER_10MIN`…) ; fichiers temporaires supprimés après 20 minutes.
+- **Risques et conditions des services** : voir `docs/bannieres-risques.md`.
+- **Vérification réelle d'une instance** (locale ou en production) :
+  `node scripts/verify-site.mjs <url>` (API) et `node scripts/verify-browser.mjs <url>` (navigateur, ordinateur et téléphone).
+
 ## Stack
 
 Next.js 15 (App Router, sortie `standalone`) · React 19 · TypeScript · Tailwind CSS 4 · Radix UI (accordéon) · Lucide · FFmpeg · yt-dlp · Vitest · Playwright.

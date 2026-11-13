@@ -5,17 +5,21 @@ import Link from "next/link";
 import { AlertCircle, ArrowRight, Check, ClipboardPaste, Download, FileVideo, Link2, Loader2, Music, Play, RotateCcw, Upload, X } from "lucide-react";
 import { DownloadError, requestFile, type DownloadPhase } from "@/lib/client-download";
 import { availableTargets, MP3_BITRATES, type Mp4Target, type OutputFormat } from "@/lib/media/formats";
+import type { BannerSet } from "@/lib/banners/types";
 import type { AnalyzeResult, ApiErrorBody } from "@/lib/types";
 import { cn, formatBytes, formatDuration } from "@/lib/utils";
+import { BannerGrid } from "./banner-grid";
 import { Button } from "./ui/button";
 import { Notice, Select } from "./ui/field";
 
-type Source = { kind: "link"; data: AnalyzeResult } | { kind: "file"; file: File; previewUrl: string; shortSide?: number; duration?: number };
+type Source = { kind: "link"; data: AnalyzeResult } | { kind: "banners"; data: BannerSet } | { kind: "file"; file: File; previewUrl: string; shortSide?: number; duration?: number };
 type Option = { id: string; label: string };
 type Failure = { title: string; message: string };
 
 const MAX_UPLOAD_MB = 200;
 const looksLikeTikTok = (v: string) => /(^|\/\/|\.)tiktok\.com\//i.test(v.trim());
+/** Lien de publication photo : il ne peut contenir que des bannières, jamais une vidéo. */
+const looksLikePhotoPost = (v: string) => /tiktok\.com\/@[^/?#]+\/photo\/\d+/i.test(v);
 
 const failureTitles: Record<string, string> = {
   VIDEO_DELETED: "Cette vidéo n'est plus disponible",
@@ -26,12 +30,30 @@ const failureTitles: Record<string, string> = {
   RATE_LIMITED: "Trop de demandes",
   UPSTREAM_ERROR: "TikTok est momentanément injoignable",
   TIMEOUT: "TikTok met trop de temps à répondre",
+  // Mode Bannières
+  POST_UNAVAILABLE: "Cette publication n'est plus disponible",
+  LINK_DEAD: "Ce lien ne mène à aucune publication",
+  TIKTOK_UNREACHABLE: "TikTok est momentanément injoignable",
+  TIKTOK_ERROR: "TikTok est momentanément injoignable",
+  TIKTOK_FORMAT: "TikTok a répondu de façon inattendue",
+  TOO_MANY: "Publication trop volumineuse",
+  BUSY: "Le service est très sollicité",
 };
+/** Réponses du mode Bannières qui signifient seulement « ce lien n'est pas un carrousel ». */
+const notBanners = new Set(["NOT_A_CAROUSEL", "NOT_A_POST", "NOT_TIKTOK", "INVALID_URL", "TOO_MANY_REDIRECTS"]);
+
+type ApiReply<T> = { ok: true; data: T } | { ok: false; error: ApiErrorBody["error"] | null };
+async function postJson<T>(path: string, body: unknown, signal: AbortSignal): Promise<ApiReply<T>> {
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
+  const json = (await res.json().catch(() => null)) as T | ApiErrorBody | null;
+  if (!res.ok || !json || (typeof json === "object" && "error" in json)) return { ok: false, error: json && typeof json === "object" && "error" in json ? json.error : null };
+  return { ok: true, data: json as T };
+}
 
 /** Champ principal : coller un lien lance aussitôt la récupération de la vidéo. */
 export function Retriever() {
   const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<false | "video" | "banners">(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [source, setSource] = useState<Source | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -57,20 +79,28 @@ export function Retriever() {
       request.current?.abort();
       reset();
       if (!value) {
-        setFailure({ title: "Aucun lien", message: "Collez le lien d'une vidéo TikTok dans le champ." });
+        setFailure({ title: "Aucun lien", message: "Collez le lien d'une vidéo ou d'un carrousel de bannières TikTok dans le champ." });
         return;
       }
       const controller = new AbortController();
       request.current = controller;
-      setLoading(true);
+      setLoading(looksLikePhotoPost(value) ? "banners" : "video");
+      const fail = (err: ApiErrorBody["error"] | null, fallbackTitle: string) => setFailure({ title: (err && failureTitles[err.code]) || fallbackTitle, message: err?.message ?? "Le serveur a répondu de façon inattendue. Réessayez dans un instant." });
       try {
-        const res = await fetch("/api/resolve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: value }), signal: controller.signal });
-        const body = (await res.json().catch(() => null)) as AnalyzeResult | ApiErrorBody | null;
-        if (!res.ok || !body || "error" in body) {
-          const err = body && "error" in body ? body.error : null;
-          setFailure({ title: (err && failureTitles[err.code]) || "La vidéo n'a pas pu être récupérée", message: err?.message ?? "Le serveur a répondu de façon inattendue. Réessayez dans un instant." });
+        // 1. Vidéo. Un lien « /photo/ » ne peut être qu'un carrousel : l'étape est sautée.
+        const video = looksLikePhotoPost(value) ? null : await postJson<AnalyzeResult>("/api/resolve", { url: value }, controller.signal);
+        if (video?.ok && video.data.linkDownload) {
+          setSource({ kind: "link", data: video.data });
+        } else if (video && !video.ok && video.error?.code !== "UNSUPPORTED_URL") {
+          fail(video.error, "La vidéo n'a pas pu être récupérée");
         } else {
-          setSource({ kind: "link", data: body });
+          // 2. Bannières : carrousel de photos, ou publication sans flux vidéo.
+          setLoading("banners");
+          const banners = await postJson<BannerSet>("/api/banners", { url: video?.ok ? video.data.url : value }, controller.signal);
+          if (banners.ok) setSource({ kind: "banners", data: banners.data });
+          else if (video?.ok) setSource({ kind: "link", data: video.data });
+          else if (video && (!banners.error || notBanners.has(banners.error.code))) fail(video.error, "La vidéo n'a pas pu être récupérée");
+          else fail(banners.error, "Les bannières n'ont pas pu être récupérées");
         }
       } catch (e) {
         if ((e as Error).name === "AbortError") return;
@@ -167,7 +197,7 @@ export function Retriever() {
               </button>
             )}
           </div>
-          <Button type="submit" size="lg" disabled={loading} className="w-full sm:w-auto sm:min-w-[9.5rem]">
+          <Button type="submit" size="lg" disabled={!!loading} className="w-full sm:w-auto sm:min-w-[9.5rem]">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {loading ? "Récupération…" : "Récupérer"}
             {!loading && <ArrowRight className="h-4 w-4" />}
@@ -212,10 +242,12 @@ export function Retriever() {
             </span>
           </Notice>
         )}
-        {loading && <ResultSkeleton />}
+        {loading && <ResultSkeleton banners={loading === "banners"} />}
         {source && (
           <div ref={resultRef} className="tf-rise mt-6 scroll-mt-24">
-            {source.kind === "link" ? (
+            {source.kind === "banners" ? (
+              <BannerGrid data={source.data} onReset={reset} onRetry={() => void retrieve(url)} />
+            ) : source.kind === "link" ? (
               <LinkResult data={source.data} onReset={reset} onPickFile={() => fileInput.current?.click()} />
             ) : (
               <FileResult source={source} onReset={reset} onMeta={(shortSide, duration) => setSource((s) => (s?.kind === "file" && s.shortSide === undefined ? { ...s, shortSide, duration } : s))} />
@@ -529,11 +561,11 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
   );
 }
 
-function ResultSkeleton() {
+function ResultSkeleton({ banners }: { banners?: boolean }) {
   return (
     <div className="tf-rise mt-6 rounded-2xl border border-line bg-white p-4 sm:p-6" data-testid="skeleton">
       <p className="mb-4 flex items-center gap-2 text-sm font-medium text-ink">
-        <Loader2 className="h-4 w-4 animate-spin text-brand" /> Récupération de la vidéo…
+        <Loader2 className="h-4 w-4 animate-spin text-brand" /> {banners ? "Recherche des bannières…" : "Récupération de la vidéo…"}
       </p>
       <div className="flex animate-pulse gap-4 sm:gap-6">
         <div className="aspect-[9/16] w-[88px] shrink-0 rounded-xl bg-canvas sm:w-[136px]" />

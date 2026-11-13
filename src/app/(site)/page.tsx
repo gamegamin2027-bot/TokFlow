@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, ClipboardPaste, Download, FileAudio, Gauge, MonitorSmartphone, ScanSearch, ShieldCheck, SlidersHorizontal, Video } from "lucide-react";
+import { Check, ClipboardPaste, Download, FileAudio, Gauge, Images, MonitorSmartphone, ScanSearch, ShieldCheck, Video } from "lucide-react";
 import { Retriever } from "@/components/retriever";
 import { Faq, type FaqItem } from "@/components/faq";
 import { buttonClass } from "@/components/ui/button";
@@ -7,8 +7,8 @@ import { buttonClass } from "@/components/ui/button";
 const features = [
   { icon: Video, title: "Vidéo sans filigrane", text: "TokFlow récupère le flux d'origine : ni logo TikTok, ni nom de compte incrusté, avec la piste audio et sans ré-encodage." },
   { icon: FileAudio, title: "Audio MP3", text: "Extrayez uniquement la bande-son, en 128, 192 ou 320 kbps selon votre besoin." },
-  { icon: SlidersHorizontal, title: "Meilleure qualité par défaut", text: "La meilleure définition disponible est présélectionnée. Vous pouvez en choisir une autre." },
-  { icon: ScanSearch, title: "La vidéo s'affiche aussitôt", text: "Miniature, lecteur, auteur et durée apparaissent sur la page dès que le lien est collé." },
+  { icon: Images, title: "Bannières animées", text: "Collez le lien d'un carrousel : chaque bannière s'affiche dans une grille, avec son animation en MP4 lorsqu'elle existe, sinon en image. Téléchargement à l'unité ou en ZIP." },
+  { icon: ScanSearch, title: "Aperçu immédiat, meilleure qualité", text: "Le contenu s'affiche dès que le lien est collé. La meilleure définition disponible est présélectionnée ; vous pouvez en choisir une autre." },
   { icon: MonitorSmartphone, title: "Sur tous vos appareils", text: "Une interface pensée pour le mobile, la tablette et l'ordinateur. Rien à installer." },
   { icon: ShieldCheck, title: "Sobre en données", text: "Pas de compte, pas d'historique. Les fichiers sont supprimés dès la fin du transfert." },
 ];
@@ -21,12 +21,13 @@ const steps = [
 
 const faq: FaqItem[] = [
   { q: "Comment TokFlow obtient-il une vidéo sans filigrane ?", a: "TokFlow ne gomme ni ne floute rien. Le logo et le nom du compte ne sont incrustés par TikTok que dans le fichier d'export « Enregistrer la vidéo ». TokFlow récupère à la place le flux de lecture public d'origine, dont l'image est intacte. Si seule une version avec filigrane est disponible pour une vidéo, TokFlow l'indique et ne la propose pas." },
-  { q: "Quels liens TikTok sont pris en charge ?", a: "Les liens de vidéos publiques : tiktok.com/@compte/video/…, ainsi que les liens courts vm.tiktok.com et vt.tiktok.com. Les vidéos privées, supprimées, réservées aux abonnés ou soumises à une restriction d'accès ne sont pas accessibles." },
+  { q: "Quels liens TikTok sont pris en charge ?", a: "Les liens de vidéos publiques (tiktok.com/@compte/video/…), les carrousels de photos et de bannières (tiktok.com/@compte/photo/…), ainsi que les liens courts vm.tiktok.com et vt.tiktok.com. Les vidéos privées, supprimées, réservées aux abonnés ou soumises à une restriction d'accès ne sont pas accessibles." },
+  { q: "Comment obtenir des bannières animées ?", a: "Collez le lien d'un carrousel de bannières : TokFlow détecte toutes les bannières de la publication et les affiche dans une grille, dans l'ordre d'origine. Lorsqu'une bannière possède une animation (« Live Photo »), elle est proposée en MP4, avec son image en JPG. Si seule une image fixe existe, TokFlow l'indique et propose le JPG : aucune animation n'est fabriquée. Sélectionnez les bannières voulues, puis téléchargez-les une à une ou dans une archive ZIP. Les fichiers sont ceux que TikTok conserve, sans réencodage ni recadrage ; la définition des animations est donc celle de TikTok (576 pixels de haut en général)." },
   { q: "Dois-je être l'auteur de la vidéo ?", a: "Non. TokFlow traite toute vidéo consultable publiquement. Vous restez toutefois responsable de l'usage du fichier : copie pour usage personnel, ou réutilisation avec l'accord du créateur. Consultez nos conditions d'utilisation." },
-  { q: "Pourquoi un lien ne peut-il pas être traité ?", a: "Le plus souvent : la vidéo a été supprimée par son créateur, elle est privée, elle est restreinte dans la région du serveur, il s'agit d'un diaporama photo, ou TikTok est momentanément indisponible. TokFlow indique la raison précise et vous propose de convertir un fichier déjà enregistré sur votre appareil." },
+  { q: "Pourquoi un lien ne peut-il pas être traité ?", a: "Le plus souvent : la vidéo a été supprimée par son créateur, elle est privée, elle est restreinte dans la région du serveur, ou TikTok est momentanément indisponible. TokFlow indique la raison précise et vous propose de convertir un fichier déjà enregistré sur votre appareil." },
   { q: "Quelle qualité vais-je obtenir ?", a: "Celle que TikTok met publiquement à disposition pour la vidéo, généralement jusqu'en 720p ou 1080p. TokFlow ne suréchantillonne jamais : aucune qualité artificielle n'est proposée." },
   { q: "Puis-je convertir un fichier que je possède déjà ?", a: "Oui. Cliquez sur « Convertir un fichier vidéo » pour importer un fichier (jusqu'à 200 Mo), puis extrayez l'audio en MP3 ou réduisez la définition en MP4. L'image n'est pas retouchée : un filigrane déjà présent dans le fichier est conservé." },
-  { q: "Conservez-vous mes vidéos ou mes liens ?", a: "Non. Les fichiers sont traités dans un dossier temporaire puis supprimés dès la fin du transfert. Aucun compte ni historique n'est créé. Seules les demandes envoyées au Centre d'assistance sont enregistrées." },
+  { q: "Conservez-vous mes vidéos ou mes liens ?", a: "Non. Les fichiers sont traités dans un dossier temporaire puis supprimés dès la fin du transfert (au plus tard vingt minutes après l'analyse pour les bannières). Aucun compte ni historique n'est créé. Pour retrouver les animations des bannières, l'adresse de la publication est transmise à un service tiers, sans aucune information sur vous : voir la politique de confidentialité. Seules les demandes envoyées au Centre d'assistance sont enregistrées." },
   { q: "TokFlow est-il affilié à TikTok ?", a: "Non. TokFlow est un service indépendant. TikTok est une marque de ByteDance Ltd." },
 ];
 
@@ -44,7 +45,7 @@ export default function Home() {
             Vos vidéos TikTok, <span className="text-brand">sans filigrane.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-[34rem] text-pretty text-base leading-7 text-muted sm:text-lg sm:leading-8">
-            Collez le lien d'une vidéo publique et récupérez l'image d'origine, en MP4 avec le son ou en MP3.
+            Collez le lien d'une vidéo publique et récupérez l'image d'origine, en MP4 avec le son ou en MP3. Les carrousels de bannières animées sont aussi pris en charge.
           </p>
           <div className="mt-8 sm:mt-10">
             <Retriever />
