@@ -46,7 +46,7 @@ for (const [engine, type] of Object.entries(engines)) {
 
       // Changement de langue : immédiat, conservé après rechargement, réversible.
       await page.getByTestId("language-switcher").click();
-      await page.getByRole("button", { name: "English", exact: true }).click();
+      await page.getByRole("button", { name: "Anglais", exact: true }).click();
       await page.getByRole("button", { name: "Get video" }).waitFor({ timeout: 15_000 });
       check((await page.locator("html").getAttribute("lang")) === "en", "passage à l'anglais sans changer de page");
       check((await page.getByRole("heading", { level: 1 }).innerText()).includes("without watermark"), "titre traduit");
@@ -61,7 +61,7 @@ for (const [engine, type] of Object.entries(engines)) {
       await page.waitForTimeout(400);
       await page.screenshot({ path: `${OUT}/${engine}-${screen}-en.png` });
       await page.getByTestId("language-switcher").click();
-      await page.getByRole("button", { name: "Français", exact: true }).click();
+      await page.getByRole("button", { name: "French", exact: true }).click();
       await page.getByRole("button", { name: "Récupérer" }).waitFor({ timeout: 15_000 });
       check(true, "retour au français");
 

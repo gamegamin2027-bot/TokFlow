@@ -18,12 +18,17 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = { themeColor: "#176B55", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#F5F4F0", width: "device-width", initialScale: 1 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang={await getLocale()} className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="flex min-h-dvh flex-col font-sans">{children}</body>
+      <body className="flex min-h-dvh flex-col font-sans">
+        <noscript>
+          <style>{`[data-reveal]{opacity:1!important;transform:none!important}`}</style>
+        </noscript>
+        {children}
+      </body>
     </html>
   );
 }

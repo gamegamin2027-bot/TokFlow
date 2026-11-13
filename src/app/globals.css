@@ -43,9 +43,6 @@ body {
   border-radius: 6px;
 }
 
-/* Champ du lien : le contour de focus est porté par son cadre (anneau autour du formulaire). */
-#tiktok-url:focus-visible { outline: none; }
-
 @keyframes tf-indeterminate {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(350%); }
@@ -61,6 +58,9 @@ body {
 @keyframes tf-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .tf-pop { animation: tf-pop 0.12s ease-out; }
 .tf-rise { animation: tf-rise 0.25s ease-out both; }
+/* Entrée du haut de page : en CSS pour ne pas attendre le JavaScript (titre visible tout de suite). */
+@keyframes tf-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.tf-enter { animation: tf-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .tf-acc[data-state="open"] { animation: tf-acc-down 0.2s ease-out; }
 .tf-acc[data-state="closed"] { animation: tf-acc-up 0.2s ease-out; }
 

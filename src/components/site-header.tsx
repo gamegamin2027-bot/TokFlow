@@ -7,18 +7,19 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "./i18n-provider";
 import { LanguageSwitcher } from "./language-switcher";
 import { Logo } from "./logo";
+import { buttonClass } from "./ui/button";
 
 export function SiteHeader() {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLElement>(null);
   const nav = [
-    { href: "/#comment-ca-marche", label: t.nav.how },
     { href: "/#fonctionnalites", label: t.nav.features },
+    { href: "/#comment-ca-marche", label: t.nav.how },
     { href: "/#faq", label: t.nav.faq },
     { href: "/a-propos", label: t.nav.about },
     { href: "/assistance", label: t.nav.support },
   ];
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -33,11 +34,11 @@ export function SiteHeader() {
   }, [open]);
 
   return (
-    <header ref={ref} className="sticky top-0 z-40 border-b border-line bg-white">
+    <header ref={ref} className="sticky top-0 z-40 border-b border-line/70 bg-canvas/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center px-5 sm:px-8">
         {/* Trois zones de largeur égale : la navigation reste centrée sur la page. */}
         <div className="flex flex-1">
-          <Link href="/" aria-label={t.nav.home} onClick={() => setOpen(false)} className="rounded-lg">
+          <Link href="/" aria-label={t.nav.home} onClick={() => setOpen(false)} className="flex items-center rounded-lg">
             <Logo />
           </Link>
         </div>
@@ -50,13 +51,16 @@ export function SiteHeader() {
         </nav>
         <div className="flex flex-1 items-center justify-end gap-2">
           <LanguageSwitcher />
+          <Link href="/#telecharger" className={buttonClass("secondary", "sm", "hidden sm:inline-flex")}>
+            {t.nav.cta}
+          </Link>
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
             aria-controls="menu-mobile"
             aria-label={open ? t.nav.close : t.nav.open}
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-[10px] border border-line bg-white text-ink transition-colors hover:border-[#c9d0c8] lg:hidden"
+            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-[10px] border border-line bg-white text-ink transition-colors hover:border-[#c9d0c8] lg:hidden"
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -70,6 +74,11 @@ export function SiteHeader() {
               {n.label}
             </Link>
           ))}
+          <div className="px-1 pb-2 pt-2 sm:hidden">
+            <Link href="/#telecharger" onClick={() => setOpen(false)} className={buttonClass("primary", "lg", "w-full")}>
+              {t.nav.cta}
+            </Link>
+          </div>
         </nav>
       </div>
     </header>

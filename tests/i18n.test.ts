@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { pickLocale } from "@/lib/i18n/config";
+import { dictionaries } from "@/lib/i18n/dictionaries";
 import { en } from "@/lib/i18n/en";
 import { fr } from "@/lib/i18n/fr";
 import { formatBytes } from "@/lib/utils";
@@ -12,14 +13,17 @@ describe("langue du site", () => {
 
   it("sans choix : première langue proposée parmi celles du navigateur, sinon le français", () => {
     expect(pickLocale(undefined, "en-US,en;q=0.9,fr;q=0.8")).toBe("en");
-    expect(pickLocale(undefined, "de-DE,de;q=0.9,en;q=0.6,fr;q=0.7")).toBe("fr");
-    expect(pickLocale(undefined, "es-ES,es;q=0.9")).toBe("fr");
+    expect(pickLocale(undefined, "de-DE,de;q=0.9,en;q=0.6,fr;q=0.7")).toBe("de");
+    expect(pickLocale(undefined, "es-ES,es;q=0.9")).toBe("es");
+    expect(pickLocale(undefined, "pt-BR,pt;q=0.9")).toBe("pt");
+    expect(pickLocale(undefined, "ja-JP,ja;q=0.9,nl;q=0.8,fr;q=0.2")).toBe("fr");
+    expect(pickLocale(undefined, "ja-JP,ja;q=0.9")).toBe("fr");
     expect(pickLocale(undefined, null)).toBe("fr");
     expect(pickLocale("xx; path=/", "")).toBe("fr"); // cookie inconnu ignoré
     expect(pickLocale(undefined, "en;q=0,fr")).toBe("fr");
   });
 
-  it("les deux dictionnaires ont le même contenu", () => {
+  it.each(Object.entries(dictionaries))("le dictionnaire %s a le même contenu que le français", (_code, en) => {
     const shape = (v: unknown): unknown => (Array.isArray(v) ? v.map(shape) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).sort().map(([k, x]) => [k, shape(x)])) : typeof v);
     const { failures: frFailures, banners: frBanners, ...frRest } = fr;
     const { failures: enFailures, banners: enBanners, ...enRest } = en;

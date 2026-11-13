@@ -128,7 +128,7 @@ export function Retriever() {
           void retrieve(url);
         }}
         noValidate
-        className="rounded-2xl bg-white p-2 shadow-[0_12px_32px_-12px_rgb(10_40_31/0.55)] transition-shadow focus-within:ring-4 focus-within:ring-white/30"
+        className="rounded-2xl border border-line bg-white p-2 shadow-field transition-colors focus-within:border-brand/50"
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label htmlFor="tiktok-url" className="sr-only">
@@ -191,13 +191,9 @@ export function Retriever() {
         </div>
       </form>
 
-      <p className="mt-3 text-[13px] leading-5 text-white/75">
-        {t.tool.accepted} <span className="whitespace-nowrap">tiktok.com/@…/video/…</span> · <span className="whitespace-nowrap">tiktok.com/@…/photo/…</span> · <span className="whitespace-nowrap">vm.tiktok.com/…</span>
-      </p>
-
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-white/80">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-muted">
         <span>{t.tool.haveFile}</span>
-        <button type="button" onClick={() => fileInput.current?.click()} className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 font-medium text-white underline decoration-white/50 underline-offset-4 transition-colors hover:decoration-white focus-visible:outline-white">
+        <button type="button" onClick={() => fileInput.current?.click()} className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 font-medium text-ink underline decoration-line underline-offset-4 transition-colors hover:decoration-ink">
           <Upload className="h-3.5 w-3.5" /> {t.tool.convertVideo}
         </button>
         <input

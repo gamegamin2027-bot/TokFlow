@@ -16,6 +16,7 @@
     "@radix-ui/react-select": "^2.4.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.72.0",
+    "motion": "^14.14.0",
     "next": "15.5.29",
     "pg": "^8.23.1",
     "react": "19.1.0",
