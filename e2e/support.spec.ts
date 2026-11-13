@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { FOUNDER_STATE, MAIL_PORT } from "../playwright.config";
 import { FOUNDER } from "./founder";
+import { choose } from "./select";
 
 const sentMails = async () => (await (await fetch(`http://127.0.0.1:${MAIL_PORT}/sent`)).json()) as { authorization: string; body: { from: string; to: string[]; subject: string; text: string } }[];
 
@@ -10,7 +11,7 @@ test("formulaire d'assistance : validation, puis aucune confirmation si l'enregi
   for (const id of ["sf-category", "sf-email", "sf-subject", "sf-description"]) await expect(page.locator(`#${id}-error`)).toBeVisible();
   await expect(page.getByTestId("support-confirmation")).toHaveCount(0);
 
-  await page.getByLabel("Catégorie de la demande").selectOption({ label: "Erreur technique" });
+  await choose(page, page.getByLabel("Catégorie de la demande"), "Erreur technique");
   await page.getByLabel("Adresse e-mail").fill("pas-un-email");
   await page.getByLabel("Lien TikTok concerné").fill("https://example.com/x");
   await page.getByLabel("Sujet").fill("Sujet de test");
@@ -37,7 +38,7 @@ test("demande envoyée → enregistrée → retrouvée dans le Centre de support
 
   // 1. Le visiteur, sans compte, envoie sa demande.
   await page.goto("/assistance");
-  await page.getByLabel("Catégorie de la demande").selectOption({ label: "Problème de téléchargement audio" });
+  await choose(page, page.getByLabel("Catégorie de la demande"), "Problème de téléchargement audio");
   await page.getByLabel("Adresse e-mail").fill(visitorEmail);
   await page.getByLabel("Lien TikTok concerné").fill("https://www.tiktok.com/@scout2015/video/6718335390845095173");
   await page.getByLabel("Sujet").fill(subject);
@@ -68,12 +69,12 @@ test("demande envoyée → enregistrée → retrouvée dans le Centre de support
   await expect(row).toContainText("Nouveau");
 
   // Filtres : la mauvaise catégorie masque la demande, la bonne la retrouve.
-  await admin.getByLabel("Filtrer par catégorie").selectOption({ label: "Partenariat" });
+  await choose(admin, admin.getByLabel("Filtrer par catégorie"), "Partenariat");
   await expect(admin.getByText("Aucune demande ne correspond à ces critères")).toBeVisible();
-  await admin.getByLabel("Filtrer par catégorie").selectOption({ label: "Problème de téléchargement audio" });
-  await admin.getByLabel("Filtrer par statut").selectOption({ label: "Résolu" });
+  await choose(admin, admin.getByLabel("Filtrer par catégorie"), "Problème de téléchargement audio");
+  await choose(admin, admin.getByLabel("Filtrer par statut"), "Résolu");
   await expect(admin.getByText("Aucune demande ne correspond à ces critères")).toBeVisible();
-  await admin.getByLabel("Filtrer par statut").selectOption({ label: "Nouveau" });
+  await choose(admin, admin.getByLabel("Filtrer par statut"), "Nouveau");
   await expect(row).toHaveCount(1);
   await admin.getByRole("button", { name: "Plus récentes d'abord" }).click();
   await expect(admin.getByRole("button", { name: "Plus anciennes d'abord" })).toBeVisible();
@@ -86,13 +87,13 @@ test("demande envoyée → enregistrée → retrouvée dans le Centre de support
   await expect(detail).toContainText(visitorEmail);
   await expect(detail).toContainText("https://www.tiktok.com/@scout2015/video/6718335390845095173");
   await expect(detail).toContainText("Téléphone Android, navigateur Chrome.");
-  await expect(detail.getByLabel("Statut actuel")).toHaveValue("new");
+  await expect(detail.getByLabel("Statut actuel")).toHaveText("Nouveau");
   const history = detail.getByTestId("history").locator("li");
   await expect(history).toHaveCount(1);
   await expect(history.first()).toContainText("Demande reçue");
 
   // 4. Changement de statut, tracé dans l'historique.
-  await detail.getByLabel("Statut actuel").selectOption("in_progress");
+  await choose(admin, detail.getByLabel("Statut actuel"), "En cours");
   await expect(history).toHaveCount(2);
   await expect(history.nth(1)).toContainText("Nouveau → En cours");
 
@@ -119,7 +120,7 @@ test("demande envoyée → enregistrée → retrouvée dans le Centre de support
   expect(mail.body).toMatchObject({ from: "TokFlow <support@tokflow.test>", to: [visitorEmail], subject: `Re: ${subject} [${id}]`, text: message });
 
   // 6. Historique et statut mis à jour, conservés après rechargement.
-  await expect(detail.getByLabel("Statut actuel")).toHaveValue("waiting");
+  await expect(detail.getByLabel("Statut actuel")).toHaveText("En attente de réponse");
   await expect(history).toHaveCount(4);
   await expect(history.filter({ hasText: `Réponse envoyée par e-mail à ${visitorEmail}` })).toContainText("Le problème est corrigé");
   await expect(history.filter({ hasText: "En cours → En attente de réponse" })).toHaveCount(1);
@@ -151,7 +152,7 @@ test("si le fournisseur refuse l'e-mail, rien n'est inscrit dans l'historique", 
   await expect(detail.getByText("L'e-mail n'a pas été envoyé")).toBeVisible();
   await expect(detail.getByTestId("reply-sent")).toHaveCount(0);
   await expect(detail.getByTestId("history").locator("li")).toHaveCount(1);
-  await expect(detail.getByLabel("Statut actuel")).toHaveValue("new");
+  await expect(detail.getByLabel("Statut actuel")).toHaveText("Nouveau");
   await founder.close();
 });
 

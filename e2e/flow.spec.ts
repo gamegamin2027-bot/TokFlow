@@ -1,5 +1,6 @@
 import { statSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { choose } from "./select";
 
 const video = {
   id: "7123456789012345678",
@@ -67,7 +68,7 @@ test("la touche Entrée lance la récupération ; vidéo puis son se télécharg
   const result = page.getByTestId("result");
   await expect(result).toContainText("Sans filigrane");
 
-  await result.getByLabel("Qualité de la vidéo").selectOption("h264_540p_1-0");
+  await choose(page, result.getByLabel("Qualité de la vidéo"), /^540p/);
   let download = page.waitForEvent("download");
   await result.getByRole("button", { name: "Télécharger la vidéo" }).click();
   expect((await download).suggestedFilename()).toBe("tiktok-demo.mp4");
@@ -169,7 +170,10 @@ test("conversion réelle d'un fichier importé en MP4 et en MP3 (FFmpeg, sans si
   const result = page.getByTestId("result");
   await expect(result.getByTestId("result-title")).toHaveText("sample.mp4");
   await expect(result.getByLabel("Qualité de la vidéo")).toContainText("Originale · 720p");
-  await expect(result.getByLabel("Qualité de la vidéo").locator("option", { hasText: "1080p" })).toHaveCount(0);
+  await result.getByLabel("Qualité de la vidéo").click();
+  await expect(page.getByRole("option", { name: /Originale · 720p/ })).toBeVisible();
+  await expect(page.getByRole("option", { name: /1080p/ })).toHaveCount(0);
+  await page.keyboard.press("Escape");
 
   let download = page.waitForEvent("download");
   await result.getByRole("button", { name: "Télécharger le son" }).click();
@@ -199,13 +203,13 @@ test.describe("TikTok réel (E2E_LIVE=1)", () => {
     let download = page.waitForEvent("download", { timeout: 80_000 });
     await result.getByRole("button", { name: "Télécharger la vidéo" }).click();
     let file = await download;
-    expect(file.suggestedFilename()).toMatch(/^tiktok-scout2015-\d+\.mp4$/);
+    expect(file.suggestedFilename()).toMatch(/^TokFlow-\d+\.mp4$/);
     expect(statSync(await file.path()).size).toBeGreaterThan(500_000);
 
     download = page.waitForEvent("download", { timeout: 80_000 });
     await result.getByRole("button", { name: "Télécharger le son" }).click();
     file = await download;
-    expect(file.suggestedFilename()).toMatch(/^tiktok-scout2015-\d+\.mp3$/);
+    expect(file.suggestedFilename()).toMatch(/^TokFlow-\d+\.mp3$/);
     expect(statSync(await file.path()).size).toBeGreaterThan(50_000);
   });
 

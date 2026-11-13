@@ -55,6 +55,8 @@ body {
 @keyframes tf-acc-up { from { height: var(--radix-accordion-content-height); } to { height: 0; } }
 
 .tf-indeterminate { animation: tf-indeterminate 1.4s ease-in-out infinite; }
+@keyframes tf-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.tf-pop { animation: tf-pop 0.12s ease-out; }
 .tf-rise { animation: tf-rise 0.25s ease-out both; }
 .tf-acc[data-state="open"] { animation: tf-acc-down 0.2s ease-out; }
 .tf-acc[data-state="closed"] { animation: tf-acc-up 0.2s ease-out; }

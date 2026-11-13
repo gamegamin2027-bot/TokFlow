@@ -171,22 +171,12 @@ export function SupportCenter({ founderEmail }: { founderEmail: string }) {
                   <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
                   <Input type="search" aria-label="Rechercher une demande" placeholder="Rechercher : identifiant, e-mail, sujet…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
                 </div>
-                <Select aria-label="Filtrer par catégorie" value={category} onChange={(e) => setCategory(e.target.value)} className="sm:w-64">
-                  <option value="">Toutes les catégories</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </Select>
-                <Select aria-label="Filtrer par statut" value={status} onChange={(e) => setStatus(e.target.value as StatusId | "")} className="sm:w-52">
-                  <option value="">Tous les statuts</option>
-                  {STATUSES.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label}
-                    </option>
-                  ))}
-                </Select>
+                <div className="sm:w-64">
+                  <Select aria-label="Filtrer par catégorie" value={category} onValueChange={setCategory} options={[{ value: "", label: "Toutes les catégories" }, ...CATEGORIES.map((c) => ({ value: c.id, label: c.label }))]} />
+                </div>
+                <div className="sm:w-56">
+                  <Select aria-label="Filtrer par statut" value={status} onValueChange={(v) => setStatus(v as StatusId | "")} options={[{ value: "", label: "Tous les statuts" }, ...STATUSES.map((x) => ({ value: x.id, label: x.label }))]} />
+                </div>
               </div>
 
               {/* Liste */}
@@ -400,13 +390,9 @@ function TicketDetail({ id, email, onBack, onChanged }: { id: string; email: Ema
             <label htmlFor="ticket-status" className="text-sm font-semibold text-ink">
               Statut actuel
             </label>
-            <Select id="ticket-status" className="mt-2.5" value={ticket.status} disabled={saving} onChange={(e) => changeStatus(e.target.value as StatusId)}>
-              {STATUSES.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </Select>
+            <div className="mt-2.5">
+              <Select id="ticket-status" value={ticket.status} disabled={saving} onValueChange={(v) => changeStatus(v as StatusId)} options={STATUSES.map((x) => ({ value: x.id, label: x.label }))} />
+            </div>
           </section>
           <section className="rounded-2xl border border-line bg-white p-5">
             <h2 className="text-sm font-semibold text-ink">Informations</h2>

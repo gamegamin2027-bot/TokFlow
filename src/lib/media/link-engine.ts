@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { readdir } from "node:fs/promises";
+import { readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { config } from "../config";
 import { ApiError } from "../errors";
@@ -167,6 +167,27 @@ async function serverCanReachTikTok(requestedUrl: string): Promise<boolean> {
   return ok;
 }
 
+/**
+ * Informations du moteur conservées quelques minutes après la récupération d'un lien :
+ * le téléchargement qui suit les réutilise au lieu d'interroger TikTok une seconde fois.
+ */
+const INFO_TTL_MS = 4 * 60_000;
+const infoCache = new Map<string, { json: string; at: number }>();
+function rememberInfo(url: string, json: string) {
+  if (json.length > 2_000_000) return;
+  infoCache.delete(url);
+  infoCache.set(url, { json, at: Date.now() });
+  for (const [key, v] of infoCache) {
+    if (infoCache.size <= 40 && Date.now() - v.at < INFO_TTL_MS) break;
+    infoCache.delete(key);
+  }
+}
+function recallInfo(url: string): string | undefined {
+  const hit = infoCache.get(url);
+  if (hit && Date.now() - hit.at < INFO_TTL_MS) return hit.json;
+  infoCache.delete(url);
+}
+
 export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
   let out: string;
   try {
@@ -180,6 +201,7 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
     }
     throw mapped;
   }
+  rememberInfo(url, out);
   const d = JSON.parse(out) as { title?: string; uploader?: string; channel?: string; duration?: number; thumbnail?: string; formats?: YtFormat[] };
   const formats = d.formats ?? [];
   const qualities = buildQualities(formats);
@@ -200,13 +222,27 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
  */
 export async function downloadFromLink(url: string, dir: string, formatId: string): Promise<string> {
   if (!/^[\w.-]{1,80}$/.test(formatId) || formatId.startsWith("download")) throw new ApiError("INVALID_REQUEST", "Qualité inconnue.");
-  try {
-    await exec(
-      ["--no-playlist", "--no-warnings", "--no-part", "--socket-timeout", "10", "--max-filesize", String(config.maxUploadBytes), "-f", formatId, "-o", join(dir, "source.%(ext)s"), url],
-      config.jobTimeoutMs,
-    );
-  } catch (e) {
-    throw mapError(e);
+  const common = ["--no-playlist", "--no-warnings", "--no-part", "--socket-timeout", "10", "--max-filesize", String(config.maxUploadBytes), "-f", formatId, "-o", join(dir, "source.%(ext)s")];
+  const cached = recallInfo(url);
+  let done = false;
+  if (cached) {
+    // Chemin rapide : les adresses de flux obtenues à la récupération sont encore valides.
+    try {
+      const infoFile = join(dir, "info.json");
+      await writeFile(infoFile, cached);
+      await execOnce([...common, "--load-info-json", infoFile], config.jobTimeoutMs);
+      done = true;
+    } catch (e) {
+      infoCache.delete(url);
+      console.error("[tokflow] informations en cache refusées, nouvelle récupération :", String((e as { stderr?: string }).stderr ?? "").slice(-200));
+    }
+  }
+  if (!done) {
+    try {
+      await exec([...common, url], config.jobTimeoutMs);
+    } catch (e) {
+      throw mapError(e);
+    }
   }
   const file = (await readdir(dir)).find((f) => f.startsWith("source."));
   if (!file) throw new ApiError("UPSTREAM_ERROR");

@@ -45,7 +45,8 @@ export async function POST(req: Request) {
     const info = await probe(source);
     if (info.durationSeconds && info.durationSeconds > config.maxDurationSeconds) throw new ApiError("TOO_LONG");
 
-    const base = `tiktok-${link.username}-${link.id}`;
+    // Nom de fichier à la marque du site, sans le nom du compte.
+    const base = `TokFlow-${link.id}`;
     if (format === "mp3") {
       if (!info.hasAudio) throw new ApiError("UNSUPPORTED_MEDIA", "Cette vidéo ne contient pas de piste audio.");
       const out = join(work.dir, "out.mp3");

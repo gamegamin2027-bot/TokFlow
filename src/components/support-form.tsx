@@ -19,7 +19,7 @@ export function SupportForm() {
   const [copied, setCopied] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const set = (k: keyof typeof empty) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const set = (k: keyof typeof empty) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setValues((v) => ({ ...v, [k]: e.target.value }));
     if (fields[k]) setFields((f) => Object.fromEntries(Object.entries(f).filter(([key]) => key !== k)));
   };
@@ -83,16 +83,17 @@ export function SupportForm() {
     <form ref={formRef} onSubmit={submit} noValidate className="rounded-2xl border border-line bg-white p-5 sm:p-8">
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Catégorie de la demande" htmlFor="sf-category" error={fields.category}>
-          <Select id="sf-category" value={values.category} onChange={set("category")} aria-invalid={!!fields.category} required>
-            <option value="" disabled>
-              Choisir une catégorie…
-            </option>
-            {CATEGORIES.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </Select>
+          <Select
+            id="sf-category"
+            value={values.category}
+            onValueChange={(category) => {
+              setValues((v) => ({ ...v, category }));
+              setFields((f) => Object.fromEntries(Object.entries(f).filter(([key]) => key !== "category")));
+            }}
+            aria-invalid={!!fields.category}
+            placeholder="Choisir une catégorie…"
+            options={CATEGORIES.map((c) => ({ value: c.id, label: c.label }))}
+          />
         </Field>
         <Field label="Adresse e-mail" htmlFor="sf-email" error={fields.email} hint="Uniquement pour vous répondre.">
           <Input id="sf-email" type="email" autoComplete="email" inputMode="email" placeholder="vous@exemple.fr" value={values.email} onChange={set("email")} aria-invalid={!!fields.email} required />

@@ -21,8 +21,8 @@ export default defineConfig({
     { name: "premiere-visite", testMatch: /first-visit\.setup\.ts/, use: desktop },
     // 2. Le reste du site, une fois le fondateur créé.
     { name: "desktop", use: desktop, dependencies: ["premiere-visite"] },
-    { name: "tablet", use: { ...devices["Desktop Chrome"], viewport: { width: 820, height: 1180 } }, testMatch: /screenshots|landing/, dependencies: ["premiere-visite"] },
-    { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /screenshots|landing|support/, dependencies: ["premiere-visite"] },
+    { name: "tablet", use: { ...devices["Desktop Chrome"], viewport: { width: 820, height: 1180 } }, testMatch: /(screenshots|landing)\.spec\.ts/, dependencies: ["premiere-visite"] },
+    { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /(screenshots|landing|support|flow)\.spec\.ts/, dependencies: ["premiere-visite"] },
   ],
   webServer: {
     // Base PostgreSQL embarquée neuve à chaque exécution.

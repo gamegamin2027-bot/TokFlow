@@ -510,27 +510,19 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
 
       <div className={cn("mt-5 grid gap-3", hasVideo && "sm:grid-cols-2")}>
         {hasVideo && (
-          <label className="block text-xs font-medium text-muted">
-            Qualité de la vidéo
-            <Select value={video} onChange={(e) => setVideo(e.target.value)} disabled={busy} className="mt-1.5 h-10 text-sm" aria-label="Qualité de la vidéo">
-              {videoOptions.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </label>
+          <div>
+            <label htmlFor="video-quality" className="block text-xs font-medium text-muted">
+              Qualité de la vidéo
+            </label>
+            <Select id="video-quality" value={video} onValueChange={setVideo} disabled={busy} className="mt-1.5 h-10 text-sm" options={videoOptions.map((o) => ({ value: o.id, label: o.label }))} />
+          </div>
         )}
-        <label className="block text-xs font-medium text-muted">
-          Qualité du son
-          <Select value={audio} onChange={(e) => setAudio(e.target.value)} disabled={busy} className="mt-1.5 h-10 text-sm" aria-label="Qualité du son">
-            {audioOptions.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-        </label>
+        <div>
+          <label htmlFor="audio-quality" className="block text-xs font-medium text-muted">
+            Qualité du son
+          </label>
+          <Select id="audio-quality" value={audio} onValueChange={setAudio} disabled={busy} className="mt-1.5 h-10 text-sm" options={audioOptions.map((o) => ({ value: o.id, label: o.label }))} />
+        </div>
       </div>
       <p className="mt-4 text-center text-xs leading-5 text-muted">Respectez les droits des créateurs : usage personnel ou contenu que vous êtes autorisé à réutiliser.</p>
     </div>

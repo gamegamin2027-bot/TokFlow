@@ -1,5 +1,8 @@
+"use client";
+
 import * as React from "react";
-import { ChevronDown } from "lucide-react";
+import * as RadixSelect from "@radix-ui/react-select";
+import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Champs de formulaire communs à tout le produit (site public et espace fondateur). */
@@ -33,14 +36,74 @@ export function Textarea({ className, ref, ...props }: React.TextareaHTMLAttribu
   return <textarea ref={ref} className={cn(control, "min-h-36 resize-y py-2.5 leading-6", className)} {...props} />;
 }
 
-export function Select({ className, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+export type SelectOption = { value: string; label: string; hint?: string };
+
+// Radix interdit la valeur vide : elle est remplacée en interne par ce marqueur.
+const EMPTY = "__vide__";
+const enc = (v: string) => (v === "" ? EMPTY : v);
+const dec = (v: string) => (v === EMPTY ? "" : v);
+
+/**
+ * Liste déroulante du produit (Radix Select) : menu ancré sous le champ, à la largeur du champ,
+ * navigable au clavier, identique sur ordinateur et sur mobile.
+ */
+export function Select({ id, value, onValueChange, options, placeholder, disabled, className, name, ...aria }: {
+  id?: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  options: readonly SelectOption[];
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+  name?: string;
+  "aria-label"?: string;
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
+}) {
+  const hasValue = options.some((o) => o.value === value);
   return (
-    <div className="relative">
-      <select className={cn(control, "h-11 cursor-pointer appearance-none pr-10", className)} {...props}>
-        {children}
-      </select>
-      <ChevronDown aria-hidden className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-    </div>
+    <RadixSelect.Root value={hasValue ? enc(value) : undefined} onValueChange={(v) => onValueChange(dec(v))} disabled={disabled} name={name}>
+      <RadixSelect.Trigger
+        id={id}
+        {...aria}
+        className={cn(
+          control,
+          "flex h-11 cursor-pointer items-center justify-between gap-3 text-left data-[placeholder]:text-muted/80 data-[state=open]:border-brand data-[state=open]:ring-2 data-[state=open]:ring-brand/15 [&>span:first-child]:truncate",
+          className,
+        )}
+      >
+        <RadixSelect.Value placeholder={placeholder} />
+        <RadixSelect.Icon asChild>
+          <ChevronDown aria-hidden className="h-4 w-4 shrink-0 text-muted" />
+        </RadixSelect.Icon>
+      </RadixSelect.Trigger>
+      <RadixSelect.Portal>
+        <RadixSelect.Content
+          position="popper"
+          sideOffset={6}
+          collisionPadding={12}
+          className="tf-pop z-50 max-h-[min(var(--radix-select-content-available-height),22rem)] w-[var(--radix-select-trigger-width)] min-w-[11rem] overflow-hidden rounded-xl border border-line bg-white shadow-[0_1px_2px_rgb(32_42_38/0.06),0_16px_40px_-12px_rgb(32_42_38/0.22)]"
+        >
+          <RadixSelect.Viewport className="p-1.5">
+            {options.map((o) => (
+              <RadixSelect.Item
+                key={o.value}
+                value={enc(o.value)}
+                className="relative flex min-h-10 cursor-pointer select-none items-center rounded-lg py-2 pl-3 pr-9 text-sm leading-5 text-ink !outline-none data-[highlighted]:bg-canvas data-[state=checked]:font-medium data-[state=checked]:text-brand-dark"
+              >
+                <span className="min-w-0">
+                  <RadixSelect.ItemText>{o.label}</RadixSelect.ItemText>
+                  {o.hint && <span className="mt-0.5 block text-xs font-normal text-muted">{o.hint}</span>}
+                </span>
+                <RadixSelect.ItemIndicator className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Check aria-hidden className="h-4 w-4 text-brand" />
+                </RadixSelect.ItemIndicator>
+              </RadixSelect.Item>
+            ))}
+          </RadixSelect.Viewport>
+        </RadixSelect.Content>
+      </RadixSelect.Portal>
+    </RadixSelect.Root>
   );
 }
 
