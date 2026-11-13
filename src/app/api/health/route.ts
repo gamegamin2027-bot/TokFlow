@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { config, linkDownloadEnabled } from "@/lib/config";
-import { linkEngineVersion } from "@/lib/media/link-engine";
+import { linkEngineVersion, networkMode } from "@/lib/media/link-engine";
 import { founderExists } from "@/lib/server/auth";
 import { databaseConfigured } from "@/lib/server/db";
 import { emailStatus } from "@/lib/server/email";
@@ -24,7 +24,7 @@ export async function GET() {
       service: "tokflow",
       linkEngine: config.linkEngine,
       linkEngineVersion: linkDownloadEnabled() ? await linkEngineVersion() : null,
-      proxy: config.proxyUrl ? "configured" : "none",
+      proxy: networkMode() === "proxy" ? "configured" : networkMode() === "tor" ? "tor" : "none",
       ...(await databaseState()),
       email: emailStatus().configured ? "configured" : "missing",
       uptime: Math.round(process.uptime()),

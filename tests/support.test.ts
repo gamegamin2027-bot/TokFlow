@@ -72,7 +72,13 @@ describe("e-mail", () => {
 
 describe("proxy sortant", () => {
   const proxy = "http://user:s3cret@proxy.example.com:8080";
-  it("n'ajoute aucun argument sans proxy", () => expect(networkArgs(null)).toEqual([]));
+  it("n'ajoute aucun argument sans proxy", () => expect(networkArgs(null, 0)).toEqual([]));
+  it("par Tor, utilise un circuit différent à chaque appel", () => {
+    const a = networkArgs(null, 9050)[1];
+    expect(a).toMatch(/^socks5h:\/\/c[0-9a-f]{12}:x@127\.0\.0\.1:9050$/);
+    expect(networkArgs(null, 9050)[1]).not.toBe(a);
+    expect(networkArgs(proxy, 9050)).toEqual(["--proxy", proxy]);
+  });
   it("transmet le proxy au moteur", () => expect(networkArgs(proxy)).toEqual(["--proxy", proxy]));
   it("accepte http, https et socks5, refuse le reste", () => {
     expect(parseProxy(proxy)).toBe(proxy);

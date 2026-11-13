@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { config } from "../config";
@@ -22,9 +23,17 @@ export type LinkMetadata = {
 
 type YtFormat = { format_id?: string; width?: number; height?: number; vcodec?: string; acodec?: string; filesize?: number; tbr?: number; format_note?: string };
 
-/** Arguments réseau communs : le proxy sortant, s'il est configuré. */
-export function networkArgs(proxyUrl: string | null = config.proxyUrl): string[] {
-  return proxyUrl ? ["--proxy", proxyUrl] : [];
+/** Mode réseau du moteur : proxy configuré, relais Tor embarqué, ou connexion directe. */
+export const networkMode = (): "proxy" | "tor" | "direct" => (config.proxyUrl ? "proxy" : config.torPort ? "tor" : "direct");
+
+/**
+ * Arguments réseau communs. Avec Tor, chaque appel utilise un identifiant SOCKS aléatoire :
+ * Tor ouvre alors un circuit distinct, donc une nouvelle adresse de sortie à chaque tentative.
+ */
+export function networkArgs(proxyUrl: string | null = config.proxyUrl, torPort: number = config.torPort): string[] {
+  if (proxyUrl) return ["--proxy", proxyUrl];
+  if (torPort) return ["--proxy", `socks5h://c${randomBytes(6).toString("hex")}:x@127.0.0.1:${torPort}`];
+  return [];
 }
 
 /** Retire l'adresse du proxy (et ses identifiants) de tout texte journalisé ou renvoyé. */
@@ -34,7 +43,7 @@ export function redactProxy(text: string, proxyUrl: string | null = config.proxy
   return out;
 }
 
-function exec(args: string[], timeoutMs: number): Promise<string> {
+function execOnce(args: string[], timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(config.ytdlpPath, [...networkArgs(), ...args], { timeout: timeoutMs, maxBuffer: 20 * 1024 * 1024, killSignal: "SIGKILL" }, (err, stdout, stderr) => {
       if (err) reject(Object.assign(err, { stderr: redactProxy(String(stderr)) }));
@@ -44,6 +53,28 @@ function exec(args: string[], timeoutMs: number): Promise<string> {
 }
 
 const AMBIGUOUS_REFUSAL = /your ip address is blocked|not available in your (country|region)|geo.?restrict/i;
+
+/** Erreurs définitives : inutile de réessayer par un autre circuit. */
+const FINAL_ERROR = /private|Requested format|File is larger than max-filesize/i;
+
+/** Par Tor, une sortie peut être refusée ou coupée : on réessaie par un autre circuit. */
+async function exec(args: string[], timeoutMs: number): Promise<string> {
+  const attempts = networkMode() === "tor" ? 3 : 1;
+  const deadline = Date.now() + timeoutMs;
+  let last: unknown;
+  for (let i = 1; i <= attempts; i++) {
+    const left = deadline - Date.now();
+    if (left < 3000) break;
+    try {
+      return await execOnce(args, Math.min(left, Math.ceil(timeoutMs / (attempts > 1 ? 2 : 1))));
+    } catch (e) {
+      last = e;
+      if (FINAL_ERROR.test((e as { stderr?: string }).stderr ?? "")) break;
+      if (i < attempts) console.error(`[tokflow] tentative ${i}/${attempts} échouée, nouveau circuit`);
+    }
+  }
+  throw last;
+}
 
 /** Dernière ligne d'erreur du moteur, pour le diagnostic (aucune donnée personnelle). */
 function engineDetail(stderr: string): string | undefined {
@@ -139,7 +170,7 @@ async function serverCanReachTikTok(requestedUrl: string): Promise<boolean> {
 export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
   let out: string;
   try {
-    out = await exec(["-J", "--no-playlist", "--no-warnings", "--socket-timeout", "10", url], 30_000);
+    out = await exec(["-J", "--no-playlist", "--no-warnings", "--socket-timeout", "10", url], networkMode() === "tor" ? 60_000 : 30_000);
   } catch (e) {
     const mapped = mapError(e);
     // Refus ambigu : si la vidéo témoin, elle, répond, notre serveur n'est pas bloqué

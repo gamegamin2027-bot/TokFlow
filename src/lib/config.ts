@@ -34,6 +34,8 @@ export const config = {
   ytdlpPath: process.env.YTDLP_PATH || "yt-dlp",
   /** Proxy sortant facultatif du moteur (http, https, socks5). Vide = connexion directe. */
   proxyUrl: parseProxy(process.env.TOKFLOW_PROXY_URL),
+  /** Port SOCKS du relais Tor embarqué (défini par docker-entrypoint.sh). Ignoré si un proxy est configuré. */
+  torPort: int("TOKFLOW_TOR_PORT", 0),
   maxUploadBytes: int("MAX_UPLOAD_MB", 200) * 1024 * 1024,
   maxDurationSeconds: int("MAX_DURATION_SECONDS", 900),
   maxConcurrentJobs: int("MAX_CONCURRENT_JOBS", 2),

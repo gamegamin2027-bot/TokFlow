@@ -110,3 +110,7 @@ En développement et dans les tests, une base PostgreSQL embarquée (PGlite) est
 ## Proxy sortant (facultatif)
 
 Certains hébergeurs (dont Render) ont des adresses IP que TikTok refuse : le moteur reçoit alors « Unexpected response from webpage request ». Définissez `TOKFLOW_PROXY_URL` (`http://utilisateur:motdepasse@hôte:port` ou `socks5://hôte:port`) pour faire passer les requêtes du moteur par un proxy. `GET /api/health` renvoie `proxy: "configured"` quand la variable est prise en compte ; l'adresse et ses identifiants ne sont jamais journalisés ni renvoyés. Vérifiez que les conditions du fournisseur de proxy et celles de TikTok autorisent cet usage.
+
+### Relais Tor embarqué (gratuit, par défaut dans l'image Docker)
+
+Sans `TOKFLOW_PROXY_URL`, l'image Docker démarre un client Tor local et le moteur passe par lui (`proxy: "tor"` dans `/api/health`). Chaque tentative utilise un circuit distinct et le moteur réessaie jusqu'à trois fois. Limites : plus lent, échecs possibles, et TikTok peut bloquer les sorties Tor à tout moment. `TOKFLOW_TOR=0` le désactive. Vérifiez que les règles de votre hébergeur autorisent Tor.

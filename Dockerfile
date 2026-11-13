@@ -25,17 +25,19 @@ ENV NODE_ENV=production \
     FFMPEG_PATH=ffmpeg \
     YTDLP_PATH=yt-dlp
 
-# FFmpeg (conversions) + yt-dlp (lecture des flux publics)
+# FFmpeg (conversions) + yt-dlp (lecture des flux publics) + Tor (relais sortant facultatif)
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ffmpeg python3 python3-pip ca-certificates \
+ && apt-get install -y --no-install-recommends ffmpeg python3 python3-pip ca-certificates tor \
  && pip3 install --no-cache-dir --break-system-packages yt-dlp \
  && apt-get purge -y python3-pip && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --chown=node:node docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
 
 USER node
 EXPOSE 10000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||10000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "server.js"]
+CMD ["./docker-entrypoint.sh"]
