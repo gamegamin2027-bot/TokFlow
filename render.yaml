@@ -1,0 +1,27 @@
+# Blueprint Render — https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: tokflow
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    # "free" (512 Mo) suffit pour le MP4 sans ré-encodage et le MP3.
+    # Passez à "starter" ou plus pour le ré-encodage de fichiers volumineux.
+    plan: free
+    region: frankfurt
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false # ex. https://tokflow.onrender.com
+      - key: NEXT_PUBLIC_CONTACT_EMAIL
+        sync: false
+      - key: TOKFLOW_LINK_ENGINE
+        value: ytdlp
+      - key: MAX_UPLOAD_MB
+        value: "200"
+      - key: MAX_DURATION_SECONDS
+        value: "900"
+      - key: MAX_CONCURRENT_JOBS
+        value: "2"
+      - key: JOB_TIMEOUT_SECONDS
+        value: "180"

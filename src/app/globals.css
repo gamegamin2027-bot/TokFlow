@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/* TokFlow design system — tokens */
+@theme inline {
+  --color-brand: #176b55;
+  --color-brand-dark: #125542;
+  --color-brand-soft: #e6f0ea;
+  --color-ink: #202a26;
+  --color-muted: #69736d;
+  --color-canvas: #f5f4f0;
+  --color-line: #dfe3dd;
+  --color-danger: #a8382d;
+  --color-danger-soft: #f8ebe8;
+  --color-warn: #7a5a12;
+  --color-warn-soft: #f6efdc;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --radius-card: 16px;
+  --shadow-card: 0 1px 2px rgb(32 42 38 / 0.04), 0 8px 24px -12px rgb(32 42 38 / 0.12);
+  --shadow-field: 0 1px 2px rgb(32 42 38 / 0.05), 0 16px 40px -20px rgb(32 42 38 / 0.18);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-brand-soft);
+  color: var(--color-brand-dark);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@keyframes tf-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+@keyframes tf-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tf-acc-down { from { height: 0; } to { height: var(--radix-accordion-content-height); } }
+@keyframes tf-acc-up { from { height: var(--radix-accordion-content-height); } to { height: 0; } }
+
+.tf-indeterminate { animation: tf-indeterminate 1.4s ease-in-out infinite; }
+.tf-rise { animation: tf-rise 0.25s ease-out both; }
+.tf-acc[data-state="open"] { animation: tf-acc-down 0.2s ease-out; }
+.tf-acc[data-state="closed"] { animation: tf-acc-up 0.2s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Contenu éditorial (pages légales) */
+.prose-tf h2 { font-size: 1.125rem; font-weight: 600; letter-spacing: -0.01em; margin-top: 2.25rem; margin-bottom: 0.6rem; color: var(--color-ink); }
+.prose-tf p, .prose-tf li { color: var(--color-muted); line-height: 1.75; font-size: 0.975rem; }
+.prose-tf p + p { margin-top: 0.8rem; }
+.prose-tf ul { list-style: disc; padding-left: 1.25rem; margin-top: 0.5rem; }
+.prose-tf li + li { margin-top: 0.3rem; }
+.prose-tf a { color: var(--color-brand); text-decoration: underline; text-underline-offset: 3px; }
+.prose-tf strong { color: var(--color-ink); font-weight: 600; }
