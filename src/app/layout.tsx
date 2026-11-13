@@ -14,7 +14,8 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(siteUrl),
     title: { default: t.meta.title, template: "%s — TokFlow" },
     description: t.meta.description,
-    openGraph: { title: "TokFlow", description: t.meta.ogDescription, type: "website", locale: t.meta.ogLocale, siteName: "TokFlow" },
+    openGraph: { title: t.meta.title, description: t.meta.ogDescription, type: "website", url: "/", locale: t.meta.ogLocale, siteName: "TokFlow" },
+    twitter: { card: "summary_large_image", title: t.meta.title, description: t.meta.ogDescription },
   };
 }
 
