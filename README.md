@@ -111,6 +111,8 @@ En développement et dans les tests, une base PostgreSQL embarquée (PGlite) est
 
 Certains hébergeurs (dont Render) ont des adresses IP que TikTok refuse : le moteur reçoit alors « Unexpected response from webpage request ». Définissez `TOKFLOW_PROXY_URL` (`http://utilisateur:motdepasse@hôte:port` ou `socks5://hôte:port`) pour faire passer les requêtes du moteur par un proxy. `GET /api/health` renvoie `proxy: "configured"` quand la variable est prise en compte ; l'adresse et ses identifiants ne sont jamais journalisés ni renvoyés. Vérifiez que les conditions du fournisseur de proxy et celles de TikTok autorisent cet usage.
 
-### Relais Tor embarqué (gratuit, par défaut dans l'image Docker)
+### Relais Tor embarqué (secours gratuit, désactivé par défaut)
 
-Sans `TOKFLOW_PROXY_URL`, l'image Docker démarre un client Tor local et le moteur passe par lui (`proxy: "tor"` dans `/api/health`). Chaque tentative utilise un circuit distinct et le moteur réessaie jusqu'à trois fois. Limites : plus lent, échecs possibles, et TikTok peut bloquer les sorties Tor à tout moment. `TOKFLOW_TOR=0` le désactive. Vérifiez que les règles de votre hébergeur autorisent Tor.
+`TOKFLOW_TOR=1` démarre un client Tor dans l'image Docker et fait passer le moteur par lui (`proxy: "tor"` dans `/api/health`), avec un circuit distinct par tentative et jusqu'à trois essais. Plus lent et moins fiable : à n'activer que si TikTok refuse l'adresse de l'hébergeur, et si les règles de l'hébergeur l'autorisent.
+
+> L'image installe `yt-dlp[default,curl-cffi]`. Sans ces dépendances réseau, TikTok répond « Unexpected response from webpage request » : c'était la cause réelle de l'échec sur Render, pas l'adresse IP.
