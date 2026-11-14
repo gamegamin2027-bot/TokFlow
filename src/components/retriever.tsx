@@ -324,7 +324,7 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
         // eslint-disable-next-line @next/next/no-img-element -- miniature distante servie par notre proxy
         <img src={data.thumbnail} alt={t.tool.thumbnail} className="h-full w-full object-cover" />
       ) : (
-        <span className="flex h-full w-full bg-gradient-to-b from-[#2a3631] to-panel" />
+        <span className="flex h-full w-full bg-gradient-to-b from-panel-hover to-panel" />
       )}
       <span className="absolute inset-0 flex items-center justify-center bg-black/10 transition-colors group-hover:bg-black/25">
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-[#202a26] shadow-card transition-transform group-hover:scale-105 sm:h-10 sm:w-10">

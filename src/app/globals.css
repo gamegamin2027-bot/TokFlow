@@ -6,17 +6,20 @@
   --color-brand-dark: #125542;
   --color-brand-soft: #e6f0ea;
   --color-ink: #202a26;
-  --color-muted: #69736d;
+  --color-muted: #656f69;
   --color-canvas: #f5f4f0;
   --color-surface: #ffffff;
   --color-surface-hover: #fbfcfb;
   --color-panel: #202a26;
+  --color-panel-hover: #2c3833;
   --color-line: #dfe3dd;
   --color-line-strong: #c9d0c8;
   --color-halo: #e6f0ea;
   --color-danger: #a8382d;
   --color-danger-soft: #f8ebe8;
   --color-warn: #7a5a12;
+  --color-info: #2f4d6e;
+  --color-info-soft: #e8eef5;
   --color-warn-soft: #f6efdc;
   --radius-card: 16px;
   --shadow-card: 0 1px 2px rgb(32 42 38 / 0.04), 0 8px 24px -12px rgb(32 42 38 / 0.12);
@@ -31,28 +34,35 @@
 html { color-scheme: light; }
 html[data-theme="dark"] {
   color-scheme: dark;
-  --color-brand: #1f8064;
-  --color-brand-dark: #24906f;
-  --color-brand-soft: #183229;
-  --color-ink: #e9eeeb;
-  --color-muted: #9aa69f;
-  --color-canvas: #121715;
-  --color-surface: #1a211e;
-  --color-surface-hover: #1f2723;
-  --color-panel: #222c28;
-  --color-line: #2b3531;
-  --color-line-strong: #3d4a44;
-  --color-halo: #17332a;
-  --color-danger: #e58a80;
-  --color-danger-soft: #3a1f1c;
-  --color-warn: #e0bf6a;
-  --color-warn-soft: #352c14;
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.5);
-  --shadow-field: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 40px -20px rgb(0 0 0 / 0.6);
+  /* Vert forêt : la couleur de la marque, en version nuit. */
+  /* Fond des boutons : assez foncé pour que le texte blanc reste bien lisible. */
+  --color-brand: #1e7d62;
+  --color-brand-dark: #22876a;
+  --color-brand-soft: #17473b;
+  --color-ink: #eef5f0;
+  --color-muted: #a3bcb1;
+  --color-canvas: #0c2b24;
+  --color-surface: #123a31;
+  --color-surface-hover: #164238;
+  --color-panel: #0a231d;
+  --color-panel-hover: #0e2e26;
+  --color-line: #1f4d42;
+  --color-line-strong: #2f6557;
+  --color-halo: #1a5546;
+  --color-danger: #f0a097;
+  --color-danger-soft: #45231f;
+  --color-warn: #e8c878;
+  --color-info: #a9c8ec;
+  --color-info-soft: #1d3a52;
+  --color-warn-soft: #3d3418;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.25), 0 8px 24px -12px rgb(0 0 0 / 0.45);
+  --shadow-field: 0 1px 2px rgb(0 0 0 / 0.25), 0 16px 40px -20px rgb(0 0 0 / 0.55);
 }
 /* Sur fond sombre, le vert de la marque sert de fond aux boutons ; pour du texte, il est éclairci. */
-html[data-theme="dark"] .text-brand { color: #58c4a2; }
-html[data-theme="dark"] .text-brand-dark { color: #7fd6ba; }
+html[data-theme="dark"] .text-brand { color: #6fdcb8; }
+html[data-theme="dark"] .text-brand-dark { color: #8fe6c8; }
+html[data-theme="dark"] .prose-tf a { color: #6fdcb8; }
+html[data-theme="dark"] :focus-visible { outline-color: #6fdcb8; }
 html[data-theme="dark"] ::selection { color: #d9f2e9; }
 html[data-theme="dark"] .theme-light-only, html:not([data-theme="dark"]) .theme-dark-only { display: none; }
 

@@ -16,7 +16,7 @@ type Detail = { ticket: Ticket; events: TicketEvent[] };
 
 const statusTone: Record<StatusId, string> = {
   new: "bg-brand-soft text-brand-dark",
-  in_progress: "bg-[#e8eef5] text-[#2f4d6e]",
+  in_progress: "bg-info-soft text-info",
   waiting: "bg-warn-soft text-warn",
   resolved: "bg-line text-ink",
   closed: "bg-canvas text-muted",
