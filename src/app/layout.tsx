@@ -15,6 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: t.meta.title, template: "%s — TokFlow" },
     description: t.meta.description,
     openGraph: { title: t.meta.title, description: t.meta.ogDescription, type: "website", url: "/", locale: t.meta.ogLocale, siteName: "TokFlow" },
+    appleWebApp: { capable: true, title: "TokFlow", statusBarStyle: "default" },
     twitter: { card: "summary_large_image", title: t.meta.title, description: t.meta.ogDescription },
   };
 }
