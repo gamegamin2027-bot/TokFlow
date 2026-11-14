@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, ArrowRight, Check, ClipboardPaste, Download, FileVideo, Link2, Loader2, Music, Play, RotateCcw, Upload, X } from "lucide-react";
+import { clipboardFromApp, insideApp } from "@/lib/app-bridge";
 import { DownloadError, requestFile, type DownloadPhase } from "@/lib/client-download";
 import { availableTargets, MP3_BITRATES, type Mp4Target, type OutputFormat } from "@/lib/media/formats";
 import { completeInBrowser } from "@/lib/banners/browser-clips";
@@ -97,9 +98,21 @@ export function Retriever() {
     [reset, f, apiMessage],
   );
 
+  // Lien reçu à l'ouverture (« Partager → TokFlow » depuis l'application, ou adresse « /?lien=… ») : il est traité aussitôt.
+  const sharedHandled = useRef(false);
+  useEffect(() => {
+    if (sharedHandled.current) return;
+    sharedHandled.current = true;
+    const shared = new URLSearchParams(window.location.search).get("lien")?.trim();
+    if (!shared) return;
+    window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+    setUrl(shared);
+    void retrieve(shared);
+  }, [retrieve]);
+
   async function pasteFromClipboard() {
     try {
-      const text = (await navigator.clipboard.readText()).trim();
+      const text = (insideApp() ? await clipboardFromApp() : await navigator.clipboard.readText()).trim();
       if (!text) return;
       setUrl(text);
       void retrieve(text);

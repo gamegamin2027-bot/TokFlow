@@ -1,3 +1,4 @@
+import { insideApp, saveThroughApp } from "./app-bridge";
 import type { ApiErrorBody } from "./types";
 
 export type DownloadPhase = { state: "preparing" } | { state: "downloading"; received: number; total: number } | { state: "saved"; fileName: string; size: number };
@@ -39,6 +40,17 @@ export async function requestFile(input: string, init: RequestInit, onPhase: (p:
     chunks.push(value);
     received += value.length;
     onPhase({ state: "downloading", received, total });
+  }
+
+  if (insideApp()) {
+    try {
+      await saveThroughApp(new Blob(chunks, { type }), fileName, signal);
+    } catch (e) {
+      if ((e as Error).name === "AbortError") throw e;
+      throw new DownloadError("L'application n'a pas pu enregistrer le fichier.", "SAVE_FAILED");
+    }
+    onPhase({ state: "saved", fileName, size: received });
+    return;
   }
 
   const href = URL.createObjectURL(new Blob(chunks, { type }));
