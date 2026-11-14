@@ -154,7 +154,7 @@ export const fr = {
       VIDEO_PRIVATE: "Cette vidéo n'est pas publique",
       NOT_FOUND: "Vidéo introuvable",
       INVALID_URL: "Ce lien n'est pas valide",
-      UNSUPPORTED_URL: "Ce lien n'est pas pris en charge",
+      UNSUPPORTED_URL: "Ce lien ne mène pas à une vidéo",
       RATE_LIMITED: "Trop de demandes",
       UPSTREAM_ERROR: "TikTok est momentanément injoignable",
       TIMEOUT: "TikTok met trop de temps à répondre",

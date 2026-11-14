@@ -90,7 +90,7 @@ test("un lien invalide affiche une erreur claire (API réelle)", async ({ page }
   await field(page).fill("https://example.com/video");
   await page.getByRole("button", { name: "Récupérer" }).click();
   const alert = page.locator("#retrieve-error");
-  await expect(alert).toContainText("Seuls les liens tiktok.com sont pris en charge");
+  await expect(alert).toContainText("Ce lien ne vient pas de TikTok");
   await expect(alert.getByRole("button", { name: "Convertir un fichier" })).toBeVisible();
   await expect(alert.getByRole("link", { name: "Signaler le problème" })).toHaveAttribute("href", "/assistance");
   await expect(page.getByTestId("result")).toHaveCount(0);

@@ -143,17 +143,22 @@ describe("bannières : domaines et liens autorisés", () => {
     const redirect = (to: string) => new Response(null, { status: 302, headers: { location: to } });
     let calls = stubTikTok(() => redirect("https://www.tiktok.com/@compte/photo/12345678901?_r=1&share=x"));
     expect((await resolvePostLink("https://vm.tiktok.com/ZGdXHfBPR/")).canonical).toBe("https://www.tiktok.com/@compte/photo/12345678901");
-    calls = stubTikTok(() => redirect("https://evil.example/@a/photo/12345678901"));
-    expect(await code(resolvePostLink("https://vm.tiktok.com/abc/"))).toBe("NOT_TIKTOK");
-    expect(calls).toHaveLength(1); // le site étranger n'est jamais contacté
-    calls = stubTikTok(() => redirect("http://169.254.169.254/latest/meta-data/"));
-    expect(await code(resolvePostLink("https://vt.tiktok.com/abc/"))).toBe("NOT_TIKTOK");
-    expect(calls).toHaveLength(1);
-    stubTikTok(() => redirect("https://www.tiktok.com:8080/@a/photo/12345678901"));
-    expect(await code(resolvePostLink("https://vm.tiktok.com/abc/"))).toBe("INVALID_URL");
-    calls = stubTikTok((u) => redirect(u.includes("vm.") ? "https://vt.tiktok.com/b/" : "https://vm.tiktok.com/a/"));
-    expect(await code(resolvePostLink("https://vm.tiktok.com/a/"))).toBe("TOO_MANY_REDIRECTS");
+    // Redirection hors de TikTok : le lien est déclaré mort, et le site étranger n'est jamais contacté.
+    for (const foreign of ["https://evil.example/@a/photo/12345678901", "http://169.254.169.254/latest/meta-data/", "https://www.tiktok.com:8080/@a/photo/12345678901", "https://user:pw@www.tiktok.com/@a/photo/12345678901"]) {
+      calls = stubTikTok(() => redirect(foreign));
+      expect(await code(resolvePostLink("https://vm.tiktok.com/abc/")), foreign).toBe("LINK_DEAD");
+      expect(calls.length).toBeGreaterThan(0);
+      for (const call of calls) expect(new URL(call).hostname).toBe("vm.tiktok.com");
+    }
+    calls = stubTikTok((u) => redirect(u.includes("vm.") ? "https://vt.tiktok.com/bbb/" : "https://vm.tiktok.com/aaa/"));
+    expect(await code(resolvePostLink("https://vm.tiktok.com/aaa/"))).toBe("LINK_DEAD");
     expect(calls).toHaveLength(5);
+    // Lien court expiré : TikTok renvoie vers son accueil.
+    stubTikTok(() => redirect("https://www.tiktok.com/?_r=1"));
+    expect(await code(resolvePostLink("https://vm.tiktok.com/expire/"))).toBe("LINK_DEAD");
+    // TikTok injoignable.
+    stubTikTok(() => { throw new Error("réseau"); });
+    expect(await code(resolvePostLink("https://vm.tiktok.com/panne/"))).toBe("TIKTOK_UNREACHABLE");
     stubTikTok(() => new Response(null));
     expect(await code(resolvePostLink("https://vm.tiktok.com/mort/"))).toBe("LINK_DEAD");
   });

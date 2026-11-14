@@ -4,18 +4,20 @@ import { ApiError, errorResponse } from "@/lib/errors";
 import { fetchLinkMetadata, type LinkMetadata } from "@/lib/media/link-engine";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { fetchOEmbed, type OEmbedInfo } from "@/lib/tiktok/oembed";
-import { isAllowedThumbnailUrl, parseTikTokUrl, resolveTikTokLink } from "@/lib/tiktok/url";
+import { extractTikTokLink, isAllowedThumbnailUrl, parseTikTokUrl, resolveTikTokLink } from "@/lib/tiktok/url";
 import type { AnalyzeResult } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  let refused: unknown;
   try {
     checkRateLimit(`resolve:${clientIp(req)}`, config.rateLimit.analyzePerMinute, 60_000);
 
     const body = (await req.json().catch(() => null)) as { url?: unknown } | null;
     if (!body) throw new ApiError("INVALID_REQUEST");
+    refused = body.url;
     const link = await resolveTikTokLink(parseTikTokUrl(body.url));
 
     const [oembed, meta] = await Promise.allSettled([
@@ -56,6 +58,11 @@ export async function POST(req: Request) {
     };
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
+    // Filet de sécurité : chaque lien refusé laisse une trace technique (adresse sans ses paramètres, jamais l'adresse IP),
+    // pour repérer une écriture de lien que TokFlow ne connaîtrait pas encore.
+    if (err instanceof ApiError && ["UNSUPPORTED_URL", "INVALID_URL", "LINK_DEAD"].includes(err.code) && typeof refused === "string") {
+      console.warn(`[tokflow] lien refusé (${err.code}${(err as { reason?: string }).reason ? `/${(err as { reason?: string }).reason}` : ""}) : ${extractTikTokLink(refused).split(/[?#]/)[0].replace(/[^\x21-\x7E]/g, "?").slice(0, 160)}`);
+    }
     return errorResponse(err);
   }
 }

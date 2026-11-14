@@ -4,6 +4,7 @@ export type ErrorCode =
   | "INVALID_URL"
   | "UNSUPPORTED_URL"
   | "NOT_FOUND"
+  | "LINK_DEAD"
   | "UPSTREAM_ERROR"
   | "RATE_LIMITED"
   | "BUSY"
@@ -27,7 +28,8 @@ export type ErrorCode =
 
 const defaults: Record<ErrorCode, { status: number; message: string }> = {
   INVALID_URL: { status: 400, message: "Ce lien n'est pas une URL valide." },
-  UNSUPPORTED_URL: { status: 400, message: "Ce lien n'est pas un lien de vidéo TikTok pris en charge." },
+  UNSUPPORTED_URL: { status: 400, message: "Ce lien TikTok ne mène pas à une vidéo. Ouvrez la vidéo, touchez Partager, puis Copier le lien." },
+  LINK_DEAD: { status: 404, message: "Ce lien court ne mène plus à aucune vidéo." },
   NOT_FOUND: { status: 404, message: "Cette vidéo n'est pas accessible publiquement : elle est peut-être privée, supprimée, réservée aux abonnés ou restreinte dans certaines régions." },
   UPSTREAM_ERROR: { status: 502, message: "TikTok n'a pas répondu correctement. Réessayez dans un instant." },
   RATE_LIMITED: { status: 429, message: "Trop de requêtes. Patientez un instant avant de réessayer." },

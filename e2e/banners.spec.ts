@@ -203,7 +203,7 @@ test("lien qui n'est ni une vidéo ni un carrousel : l'erreur d'origine est cons
   await page.goto("/");
   await field(page).fill("https://www.tiktok.com/@demo");
   await field(page).press("Enter");
-  await expect(page.locator("#retrieve-error")).toContainText("Ce lien n'est pas pris en charge");
+  await expect(page.locator("#retrieve-error")).toContainText("Ce lien ne mène pas à une vidéo");
   expect(calls.resolve).toBe(1);
 });
 

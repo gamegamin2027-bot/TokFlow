@@ -22,7 +22,7 @@ type Failure = { title: string; message: string };
 const MAX_UPLOAD_MB = 200;
 const looksLikeTikTok = (v: string) => /(^|\/\/|\.)tiktok\.com\//i.test(v.trim());
 /** Lien de publication photo : il ne peut contenir que des bannières, jamais une vidéo. */
-const looksLikePhotoPost = (v: string) => /tiktok\.com\/@[^/?#]+\/photo\/\d+/i.test(v);
+const looksLikePhotoPost = (v: string) => /tiktok\.com\/(?:[a-z-]+\/)?(?:@[^/?#]*\/|share\/)?photo\/\d+/i.test(v);
 
 /** Réponses du mode Bannières qui signifient seulement « ce lien n'est pas un carrousel ». */
 const notBanners = new Set(["NOT_A_CAROUSEL", "NOT_A_POST", "NOT_TIKTOK", "INVALID_URL", "TOO_MANY_REDIRECTS"]);
