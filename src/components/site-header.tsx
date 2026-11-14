@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "./i18n-provider";
 import { LanguageSwitcher } from "./language-switcher";
 import { Logo } from "./logo";
+import { ThemeToggle } from "./theme-toggle";
 import { buttonClass } from "./ui/button";
 
 export function SiteHeader() {
@@ -51,6 +52,7 @@ export function SiteHeader() {
         </nav>
         <div className="flex flex-1 items-center justify-end gap-2">
           <LanguageSwitcher />
+          <ThemeToggle />
           <Link href="/#telecharger" className={buttonClass("secondary", "sm", "hidden sm:inline-flex")}>
             {t.nav.cta}
           </Link>
@@ -60,14 +62,14 @@ export function SiteHeader() {
             aria-expanded={open}
             aria-controls="menu-mobile"
             aria-label={open ? t.nav.close : t.nav.open}
-            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-[10px] border border-line bg-white text-ink transition-colors hover:border-[#c9d0c8] lg:hidden"
+            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-[10px] border border-line bg-surface text-ink transition-colors hover:border-line-strong lg:hidden"
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </div>
 
-      <div id="menu-mobile" hidden={!open} className={cn("border-t border-line bg-white shadow-card lg:hidden", open && "tf-rise")}>
+      <div id="menu-mobile" hidden={!open} className={cn("border-t border-line bg-surface shadow-card lg:hidden", open && "tf-rise")}>
         <nav aria-label={t.nav.mobile} className="mx-auto max-w-6xl px-3 py-2 sm:px-6">
           {nav.map((n) => (
             <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className="flex h-12 items-center rounded-lg px-3 text-[15px] font-medium text-ink hover:bg-canvas">

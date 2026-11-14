@@ -141,7 +141,7 @@ export function Retriever() {
           void retrieve(url);
         }}
         noValidate
-        className="rounded-2xl border border-line bg-white p-2 shadow-field transition-colors focus-within:border-brand/50"
+        className="rounded-2xl border border-line bg-surface p-2 shadow-field transition-colors focus-within:border-brand/50"
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label htmlFor="tiktok-url" className="sr-only">
@@ -283,9 +283,9 @@ function ResultLayout({ media, expanded, badge, title, subtitle, meta, onReset, 
     </dl>
   );
   return (
-    <section aria-label={t.tool.result} data-testid="result" className="rounded-2xl border border-line bg-white p-4 shadow-card sm:p-6">
+    <section aria-label={t.tool.result} data-testid="result" className="rounded-2xl border border-line bg-surface p-4 shadow-card sm:p-6">
       <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-x-4 gap-y-4 sm:grid-cols-[136px_minmax(0,1fr)] sm:gap-x-6">
-        <div className={cn("relative aspect-[9/16] self-start overflow-hidden rounded-xl border border-line bg-ink", expanded && "col-span-2 mx-auto w-60 sm:col-span-1 sm:w-auto")}>{media}</div>
+        <div className={cn("relative aspect-[9/16] self-start overflow-hidden rounded-xl border border-line bg-panel", expanded && "col-span-2 mx-auto w-60 sm:col-span-1 sm:w-auto")}>{media}</div>
         <div className={cn("flex min-w-0 flex-col", expanded && "col-span-2 sm:col-span-1")}>
           <div className="flex items-start justify-between gap-2">
             <p className="inline-flex min-h-7 items-center gap-1.5 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-medium leading-4 text-brand-dark">{badge}</p>
@@ -324,10 +324,10 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
         // eslint-disable-next-line @next/next/no-img-element -- miniature distante servie par notre proxy
         <img src={data.thumbnail} alt={t.tool.thumbnail} className="h-full w-full object-cover" />
       ) : (
-        <span className="flex h-full w-full bg-gradient-to-b from-[#2a3631] to-ink" />
+        <span className="flex h-full w-full bg-gradient-to-b from-[#2a3631] to-panel" />
       )}
-      <span className="absolute inset-0 flex items-center justify-center bg-ink/10 transition-colors group-hover:bg-ink/25">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-ink shadow-card transition-transform group-hover:scale-105 sm:h-10 sm:w-10">
+      <span className="absolute inset-0 flex items-center justify-center bg-black/10 transition-colors group-hover:bg-black/25">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-[#202a26] shadow-card transition-transform group-hover:scale-105 sm:h-10 sm:w-10">
           <Play className="ml-0.5 h-4 w-4 fill-current" />
         </span>
       </span>
@@ -568,7 +568,7 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
 function ResultSkeleton({ banners }: { banners?: boolean }) {
   const { t } = useI18n();
   return (
-    <div className="tf-rise mt-6 rounded-2xl border border-line bg-white p-4 sm:p-6" data-testid="skeleton">
+    <div className="tf-rise mt-6 rounded-2xl border border-line bg-surface p-4 sm:p-6" data-testid="skeleton">
       <p className="mb-4 flex items-center gap-2 text-sm font-medium text-ink">
         <Loader2 className="h-4 w-4 animate-spin text-brand" /> {banners ? t.tool.loadingBanners : t.tool.loadingVideo}
       </p>

@@ -14,7 +14,6 @@ export const de: Dictionary = {
     closeResult: "Ergebnis schließen",
     rights: "Achte die Rechte der Urheber: nur für den privaten Gebrauch oder Inhalte, die du weiterverwenden darfst.",
     downloadFailed: "Der Download ist fehlgeschlagen. Bitte versuche es erneut.",
-    frenchOnly: "Diese Seite ist nur auf Französisch verfügbar.",
   },
   units: { bytes: ["B", "KB", "MB", "GB"], decimal: "," },
   nav: {
@@ -31,6 +30,7 @@ export const de: Dictionary = {
     cta: "Video herunterladen",
     language: "Sprache der Website",
     languages: { fr: "Französisch", en: "Englisch", es: "Spanisch", de: "Deutsch", pt: "Portugiesisch", it: "Italienisch" },
+    theme: "Darstellung: hell oder dunkel",
   },
   footer: {
     tagline: "Lade öffentliche TikTok-Videos ohne Wasserzeichen als MP4 oder MP3 herunter, einfach und mit Respekt vor den Urhebern.",
@@ -39,6 +39,7 @@ export const de: Dictionary = {
     legal: "Rechtliches",
     privacy: "Datenschutz",
     terms: "Nutzungsbedingungen",
+    app: "Android-App",
     rights: (year: number) => `© ${year} TokFlow. Alle Rechte vorbehalten.`,
     independent: "TokFlow ist ein unabhängiger Dienst ohne Verbindung zu TikTok oder ByteDance Ltd.",
   },
@@ -69,6 +70,7 @@ export const de: Dictionary = {
     ctaTitle: "Du hast einen TikTok-Link?",
     ctaText: "Füge ihn oben auf der Seite ein: Video und Ton stehen in wenigen Sekunden bereit.",
     ctaButton: "Link einfügen",
+    appButton: "Android-App herunterladen",
     responsibleTitle: "Verantwortungsvolle Nutzung",
     responsibleText: "TokFlow liest nur öffentliche Videos, ohne Konto und ohne eine Beschränkung zu umgehen. Die Inhalte gehören ihren Urhebern: Behalte sie für den privaten Gebrauch oder hole ihre Erlaubnis ein, bevor du sie weiterverwendest.",
     readTerms: "Bedingungen lesen",

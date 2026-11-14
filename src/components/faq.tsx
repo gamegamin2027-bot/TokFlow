@@ -7,7 +7,7 @@ export type FaqItem = { q: string; a: string };
 
 export function Faq({ items }: { items: FaqItem[] }) {
   return (
-    <Accordion.Root type="single" collapsible className="divide-y divide-line rounded-card border border-line bg-white">
+    <Accordion.Root type="single" collapsible className="divide-y divide-line rounded-card border border-line bg-surface">
       {items.map((item, i) => (
         <Accordion.Item key={i} value={`item-${i}`}>
           <Accordion.Header>

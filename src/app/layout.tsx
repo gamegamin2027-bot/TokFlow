@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { THEME_COLORS, THEME_COOKIE, pickTheme } from "@/lib/theme";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"], display: "swap" });
@@ -20,11 +22,15 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = { themeColor: "#F5F4F0", width: "device-width", initialScale: 1 };
+const currentTheme = async () => pickTheme((await cookies()).get(THEME_COOKIE)?.value);
+
+export async function generateViewport(): Promise<Viewport> {
+  return { themeColor: THEME_COLORS[await currentTheme()], width: "device-width", initialScale: 1 };
+}
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang={await getLocale()} className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang={await getLocale()} data-theme={await currentTheme()} className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="flex min-h-dvh flex-col font-sans">
         <noscript>
           <style>{`[data-reveal]{opacity:1!important;transform:none!important}`}</style>

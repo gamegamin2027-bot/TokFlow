@@ -7,14 +7,14 @@ import { cn } from "@/lib/utils";
 
 /** Champs de formulaire communs à tout le produit (site public et espace fondateur). */
 const control =
-  "w-full rounded-[10px] border border-line bg-white px-3.5 text-[15px] text-ink placeholder:text-muted/70 transition-colors hover:border-[#c9d0c8] focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-canvas disabled:text-muted aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger/10";
+  "w-full rounded-[10px] border border-line bg-surface px-3.5 text-[15px] text-ink placeholder:text-muted/70 transition-colors hover:border-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-canvas disabled:text-muted aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger/10";
 
-export function Field({ label, htmlFor, hint, error, optional, children, className }: { label: string; htmlFor: string; hint?: string; error?: string; optional?: boolean; children: React.ReactNode; className?: string }) {
+export function Field({ label, htmlFor, hint, error, optional, children, className }: { label: string; htmlFor: string; hint?: string; error?: string; optional?: boolean | string; children: React.ReactNode; className?: string }) {
   return (
     <div className={className}>
       <label htmlFor={htmlFor} className="flex items-baseline justify-between gap-3 text-sm font-medium text-ink">
         {label}
-        {optional && <span className="text-xs font-normal text-muted">Facultatif</span>}
+        {optional && <span className="text-xs font-normal text-muted">{typeof optional === "string" ? optional : "Facultatif"}</span>}
       </label>
       <div className="mt-1.5">{children}</div>
       {error ? (
@@ -82,7 +82,7 @@ export function Select({ id, value, onValueChange, options, placeholder, disable
           position="popper"
           sideOffset={6}
           collisionPadding={12}
-          className="tf-pop z-50 max-h-[min(var(--radix-select-content-available-height),22rem)] w-[var(--radix-select-trigger-width)] min-w-[11rem] overflow-hidden rounded-xl border border-line bg-white shadow-[0_1px_2px_rgb(32_42_38/0.06),0_16px_40px_-12px_rgb(32_42_38/0.22)]"
+          className="tf-pop z-50 max-h-[min(var(--radix-select-content-available-height),22rem)] w-[var(--radix-select-trigger-width)] min-w-[11rem] overflow-hidden rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgb(32_42_38/0.06),0_16px_40px_-12px_rgb(32_42_38/0.22)]"
         >
           <RadixSelect.Viewport className="p-1.5">
             {options.map((o) => (

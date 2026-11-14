@@ -1,5 +1,6 @@
+import { headers } from "next/headers";
 import Link from "next/link";
-import { Check, ClipboardPaste, Copy, Download, FileAudio, Images, MonitorSmartphone, ScanSearch, ShieldCheck, Video } from "lucide-react";
+import { Check, ClipboardPaste, Copy, Download, FileAudio, Images, MonitorSmartphone, ScanSearch, ShieldCheck, Smartphone, Video } from "lucide-react";
 import { Retriever } from "@/components/retriever";
 import { Faq } from "@/components/faq";
 import { Reveal } from "@/components/reveal";
@@ -12,13 +13,15 @@ const stepIcons = [Copy, ClipboardPaste, Download];
 export default async function Home() {
   const { t } = await getDictionary();
   const h = t.home;
+  // Dans l'application Android, inutile de proposer de l'installer.
+  const insideApp = /TokFlowApp\//.test((await headers()).get("user-agent") ?? "");
   return (
     <main>
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_50%_0%,#e6f0ea_0%,transparent_70%)]" />
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_50%_0%,var(--color-halo)_0%,transparent_70%)]" />
         <div className="relative mx-auto max-w-6xl px-5 pb-16 pt-14 text-center sm:px-8 sm:pb-24 sm:pt-24">
-          <p className="tf-enter mx-auto inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted">
+          <p className="tf-enter mx-auto inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-muted">
             <span className="h-1.5 w-1.5 rounded-full bg-brand" /> {h.badge}
           </p>
           <h1 style={{ animationDelay: "60ms" }} className="tf-enter mx-auto mt-6 max-w-3xl text-balance text-[clamp(28px,9vw,38px)] font-semibold leading-[1.05] tracking-[-0.035em] text-ink sm:text-6xl lg:text-[68px]">
@@ -37,18 +40,25 @@ export default async function Home() {
               </li>
             ))}
           </ul>
+          {!insideApp && (
+            <div style={{ animationDelay: "320ms" }} className="tf-enter mt-7">
+              <a href="/app/TokFlow.apk" download="TokFlow.apk" data-testid="app-download" className={buttonClass("secondary", "md")}>
+                <Smartphone className="h-4 w-4 text-brand" strokeWidth={2} aria-hidden /> {h.appButton}
+              </a>
+            </div>
+          )}
         </div>
       </section>
 
       {/* Fonctionnalités */}
-      <section id="fonctionnalites" className="border-t border-line bg-white">
+      <section id="fonctionnalites" className="border-t border-line bg-surface">
         <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
           <SectionHeading eyebrow={h.featuresEyebrow} title={h.featuresTitle} text={h.featuresLead} />
           <ul className="mt-12 grid gap-px overflow-hidden rounded-card border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
             {h.features.map((f, i) => {
               const Icon = featureIcons[i];
               return (
-              <Reveal as="li" key={f.title} delay={(i % 3) * 0.06} className="group bg-white p-6 transition-colors duration-200 hover:bg-[#fbfcfb] sm:p-7">
+              <Reveal as="li" key={f.title} delay={(i % 3) * 0.06} className="group bg-surface p-6 transition-colors duration-200 hover:bg-surface-hover sm:p-7">
                 <span className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-brand-soft text-brand transition-transform duration-300 ease-out group-hover:-translate-y-0.5">
                   <Icon className="h-5 w-5" strokeWidth={1.75} />
                 </span>
@@ -69,7 +79,7 @@ export default async function Home() {
             {h.steps.map((s, i) => {
               const StepIcon = stepIcons[i];
               return (
-              <Reveal as="li" key={s.title} delay={i * 0.08} className="rounded-card border border-line bg-white p-6 sm:p-7">
+              <Reveal as="li" key={s.title} delay={i * 0.08} className="rounded-card border border-line bg-surface p-6 sm:p-7">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-medium text-brand">0{i + 1}</span>
                   <StepIcon className="h-5 w-5 text-muted" strokeWidth={1.75} />
@@ -99,7 +109,7 @@ export default async function Home() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="border-t border-line bg-white">
+      <section id="faq" className="border-t border-line bg-surface">
         <div className="mx-auto grid max-w-6xl gap-10 px-5 py-20 sm:px-8 sm:py-24 lg:grid-cols-[1fr_1.6fr]">
           <div>
             <SectionHeading align="left" eyebrow={h.faqEyebrow} title={h.faqTitle} text={h.faqLead} />
@@ -114,7 +124,7 @@ export default async function Home() {
       {/* CTA */}
       <section className="border-t border-line">
         <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
-          <Reveal className="rounded-[20px] bg-ink px-6 py-14 text-center sm:px-12">
+          <Reveal className="rounded-[20px] bg-panel px-6 py-14 text-center sm:px-12">
             <h2 className="mx-auto max-w-xl text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl">{h.ctaTitle}</h2>
             <p className="mx-auto mt-3 max-w-md text-[15px] leading-7 text-white/65">{h.ctaText}</p>
             <Link href="/#telecharger" className={buttonClass("primary", "lg", "mt-8")}>

@@ -18,7 +18,7 @@ const statusTone: Record<StatusId, string> = {
   new: "bg-brand-soft text-brand-dark",
   in_progress: "bg-[#e8eef5] text-[#2f4d6e]",
   waiting: "bg-warn-soft text-warn",
-  resolved: "bg-[#eceeea] text-ink",
+  resolved: "bg-line text-ink",
   closed: "bg-canvas text-muted",
 };
 
@@ -89,7 +89,7 @@ export function SupportCenter({ founderEmail }: { founderEmail: string }) {
   return (
     <div className="flex min-h-dvh flex-1 flex-col bg-canvas lg:flex-row">
       {/* Navigation latérale */}
-      <aside className="border-b border-line bg-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-64 lg:shrink-0 lg:flex-col lg:border-b-0 lg:border-r">
+      <aside className="border-b border-line bg-surface lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-64 lg:shrink-0 lg:flex-col lg:border-b-0 lg:border-r">
         <div className="flex h-16 items-center justify-between px-5">
           <Logo />
           <button type="button" onClick={logout} className="flex h-10 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-muted transition-colors hover:bg-canvas hover:text-ink lg:hidden">
@@ -116,7 +116,7 @@ export function SupportCenter({ founderEmail }: { founderEmail: string }) {
                 {n.id === "" ? <Inbox className="h-4 w-4" /> : <CircleDot className="h-4 w-4 opacity-60" />}
                 {n.label}
               </span>
-              <span className={cn("min-w-6 rounded-full px-1.5 text-center text-xs tabular-nums", status === n.id ? "bg-white text-brand-dark" : "bg-canvas text-muted")}>{n.count ?? "–"}</span>
+              <span className={cn("min-w-6 rounded-full px-1.5 text-center text-xs tabular-nums", status === n.id ? "bg-surface text-brand-dark" : "bg-canvas text-muted")}>{n.count ?? "–"}</span>
             </button>
           ))}
         </nav>
@@ -152,7 +152,7 @@ export function SupportCenter({ founderEmail }: { founderEmail: string }) {
               {/* Compteurs */}
               <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
                 {nav.map((n) => (
-                  <div key={n.id || "all"} className="rounded-xl border border-line bg-white px-4 py-3" data-testid={`count-${n.id || "all"}`}>
+                  <div key={n.id || "all"} className="rounded-xl border border-line bg-surface px-4 py-3" data-testid={`count-${n.id || "all"}`}>
                     <dt className="truncate text-xs text-muted">{n.id === "" ? "Total" : n.label}</dt>
                     <dd className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-ink">{n.count ?? "–"}</dd>
                   </div>
@@ -180,7 +180,7 @@ export function SupportCenter({ founderEmail }: { founderEmail: string }) {
               </div>
 
               {/* Liste */}
-              <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-white">
+              <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-surface">
                 <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 text-sm sm:px-5">
                   <p className="text-muted" data-testid="result-count">
                     {list ? `${list.tickets.length} demande${list.tickets.length > 1 ? "s" : ""}${filtered ? " correspondante" + (list.tickets.length > 1 ? "s" : "") : ""}` : "Chargement…"}
@@ -282,7 +282,7 @@ function TicketDetail({ id, email, onBack, onChanged }: { id: string; email: Ema
   }
 
   const back = (
-    <button type="button" onClick={onBack} className="-ml-2 flex h-9 cursor-pointer items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-muted transition-colors hover:bg-white hover:text-ink">
+    <button type="button" onClick={onBack} className="-ml-2 flex h-9 cursor-pointer items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-muted transition-colors hover:bg-surface hover:text-ink">
       <ArrowLeft className="h-4 w-4" /> Toutes les demandes
     </button>
   );
@@ -334,7 +334,7 @@ function TicketDetail({ id, email, onBack, onChanged }: { id: string; email: Ema
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-5">
-          <section className="rounded-2xl border border-line bg-white p-5 sm:p-6">
+          <section className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
             <h2 className="text-sm font-semibold text-ink">Description</h2>
             <p className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-7 text-ink">{ticket.description}</p>
           </section>
@@ -353,12 +353,12 @@ function TicketDetail({ id, email, onBack, onChanged }: { id: string; email: Ema
             />
           )}
 
-          <section className="rounded-2xl border border-line bg-white p-5 sm:p-6">
+          <section className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
             <h2 className="text-sm font-semibold text-ink">Historique</h2>
             <ol className="mt-4 space-y-5" data-testid="history">
               {events.map((ev) => (
                 <li key={ev.id} className="relative pl-6">
-                  <span className={cn("absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full", ev.type === "reply_sent" ? "bg-brand" : "bg-line ring-1 ring-[#c9d0c8]")} />
+                  <span className={cn("absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full", ev.type === "reply_sent" ? "bg-brand" : "bg-line ring-1 ring-line-strong")} />
                   <p className="text-sm text-ink">
                     {ev.type === "created" && "Demande reçue"}
                     {ev.type === "status_changed" && (
@@ -386,7 +386,7 @@ function TicketDetail({ id, email, onBack, onChanged }: { id: string; email: Ema
         </div>
 
         <aside className="space-y-5">
-          <section className="rounded-2xl border border-line bg-white p-5">
+          <section className="rounded-2xl border border-line bg-surface p-5">
             <label htmlFor="ticket-status" className="text-sm font-semibold text-ink">
               Statut actuel
             </label>
@@ -394,7 +394,7 @@ function TicketDetail({ id, email, onBack, onChanged }: { id: string; email: Ema
               <Select id="ticket-status" value={ticket.status} disabled={saving} onValueChange={(v) => changeStatus(v as StatusId)} options={STATUSES.map((x) => ({ value: x.id, label: x.label }))} />
             </div>
           </section>
-          <section className="rounded-2xl border border-line bg-white p-5">
+          <section className="rounded-2xl border border-line bg-surface p-5">
             <h2 className="text-sm font-semibold text-ink">Informations</h2>
             <dl className="mt-3 space-y-3.5 text-sm">
               <Info label="E-mail" value={ticket.email} />
@@ -459,7 +459,7 @@ function ReplyComposer({ ticket, email, onCancel, onSent }: { ticket: Ticket; em
   }
 
   return (
-    <form onSubmit={send} noValidate className="tf-rise rounded-2xl border border-brand/30 bg-white p-5 sm:p-6" data-testid="reply-composer">
+    <form onSubmit={send} noValidate className="tf-rise rounded-2xl border border-brand/30 bg-surface p-5 sm:p-6" data-testid="reply-composer">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-ink">Répondre par e-mail</h2>
         <button type="button" onClick={onCancel} aria-label="Fermer la réponse" className="-mr-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-canvas hover:text-ink">

@@ -3,18 +3,23 @@ import { Database } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
 import { SupportForm } from "@/components/support-form";
 import { Notice } from "@/components/ui/field";
+import { getPages } from "@/lib/i18n/pages";
+import { getLocale } from "@/lib/i18n/server";
 import { databaseConfigured } from "@/lib/server/db";
 
-export const metadata: Metadata = { title: "Centre d'assistance", description: "Envoyez votre demande à l'équipe TokFlow directement depuis le site." };
+export async function generateMetadata(): Promise<Metadata> {
+  return (await getPages()).support.meta;
+}
 
-export default function Assistance() {
+export default async function Assistance() {
+  const page = (await getPages()).support;
   return (
-    <PageShell bare eyebrow="Assistance" title="Centre d'assistance TokFlow" intro="Un problème de téléchargement, une suggestion, une question ? Décrivez votre demande : elle est transmise directement à l'équipe.">
+    <PageShell bare eyebrow={page.eyebrow} title={page.title} intro={page.intro}>
       {databaseConfigured() ? (
-        <SupportForm />
+        <SupportForm t={page.form} french={(await getLocale()) === "fr"} />
       ) : (
-        <Notice tone="warn" title="Le centre d'assistance est momentanément indisponible" icon={<Database className="h-4.5 w-4.5" />}>
-          Les demandes ne peuvent pas être enregistrées pour le moment. Réessayez plus tard.
+        <Notice tone="warn" title={page.unavailableTitle} icon={<Database className="h-4.5 w-4.5" />}>
+          {page.unavailableText}
         </Notice>
       )}
     </PageShell>

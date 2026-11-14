@@ -51,7 +51,7 @@ export function FounderAuth({ mode }: { mode: "setup" | "login" }) {
         <div className="flex justify-center">
           <Logo />
         </div>
-        <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-card sm:p-8">
+        <div className="mt-8 rounded-2xl border border-line bg-surface p-6 shadow-card sm:p-8">
           <span className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-brand-soft text-brand">
             <LockKeyhole className="h-5 w-5" strokeWidth={1.75} />
           </span>

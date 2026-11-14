@@ -14,7 +14,6 @@ export const fr = {
     closeResult: "Fermer le résultat",
     rights: "Respectez les droits des créateurs : usage personnel ou contenu que vous êtes autorisé à réutiliser.",
     downloadFailed: "Le téléchargement a échoué. Réessayez.",
-    frenchOnly: "",
   },
   units: { bytes: ["o", "Ko", "Mo", "Go"], decimal: "," },
   nav: {
@@ -31,6 +30,7 @@ export const fr = {
     cta: "Télécharger une vidéo",
     language: "Langue du site",
     languages: { fr: "Français", en: "Anglais", es: "Espagnol", de: "Allemand", pt: "Portugais", it: "Italien" },
+    theme: "Apparence : clair ou sombre",
   },
   footer: {
     tagline: "Téléchargez des vidéos TikTok publiques sans filigrane, en MP4 ou MP3, simplement et dans le respect des créateurs.",
@@ -39,6 +39,7 @@ export const fr = {
     legal: "Légal",
     privacy: "Confidentialité",
     terms: "Conditions d'utilisation",
+    app: "Application Android",
     rights: (year: number) => `© ${year} TokFlow. Tous droits réservés.`,
     independent: "TokFlow est un service indépendant, non affilié à TikTok ni à ByteDance Ltd.",
   },
@@ -69,6 +70,7 @@ export const fr = {
     ctaTitle: "Vous avez un lien TikTok ?",
     ctaText: "Collez-le en haut de la page : la vidéo et le son sont disponibles en quelques secondes.",
     ctaButton: "Coller un lien",
+    appButton: "Télécharger l'application Android",
     responsibleTitle: "Un usage responsable",
     responsibleText: "TokFlow ne lit que les vidéos publiques, sans compte et sans contourner aucune restriction. Les contenus appartiennent à leurs créateurs : gardez-les pour votre usage personnel, ou demandez leur accord avant de les réutiliser.",
     readTerms: "Lire les conditions",

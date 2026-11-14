@@ -16,7 +16,6 @@ export const en: Dictionary = {
     closeResult: "Close the result",
     rights: "Respect creators' rights: personal use only, or content you are allowed to reuse.",
     downloadFailed: "The download failed. Please try again.",
-    frenchOnly: "This page is available in French only.",
   },
   units: { bytes: ["B", "KB", "MB", "GB"], decimal: "." },
   nav: {
@@ -33,6 +32,7 @@ export const en: Dictionary = {
     cta: "Download a video",
     language: "Site language",
     languages: { fr: "French", en: "English", es: "Spanish", de: "German", pt: "Portuguese", it: "Italian" },
+    theme: "Appearance: light or dark",
   },
   footer: {
     tagline: "Download public TikTok videos without watermark, in MP4 or MP3, simply and with respect for creators.",
@@ -41,6 +41,7 @@ export const en: Dictionary = {
     legal: "Legal",
     privacy: "Privacy",
     terms: "Terms of use",
+    app: "Android app",
     rights: (year: number) => `© ${year} TokFlow. All rights reserved.`,
     independent: "TokFlow is an independent service, not affiliated with TikTok or ByteDance Ltd.",
   },
@@ -71,6 +72,7 @@ export const en: Dictionary = {
     ctaTitle: "Got a TikTok link?",
     ctaText: "Paste it at the top of the page: the video and the sound are available within seconds.",
     ctaButton: "Paste a link",
+    appButton: "Download the Android app",
     responsibleTitle: "Responsible use",
     responsibleText: "TokFlow only reads public videos, without an account and without bypassing any restriction. Content belongs to its creators: keep it for personal use, or ask their permission before reusing it.",
     readTerms: "Read the terms",
