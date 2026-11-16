@@ -1,6 +1,6 @@
 // Vérifie le choix de la langue comme le ferait un visiteur, sur trois moteurs de navigateur :
 // chaque langue est choisie dans le menu, puis la page, le menu, le rechargement et une page secondaire sont contrôlés.
-// Usage : node scripts/verify-languages.mjs https://exemple.fr
+// Usage : node scripts/verify-languages.mjs https://exemple.fr   (ENGINES=chromium pour un seul moteur)
 import { createRequire } from "node:module";
 const { chromium, firefox, webkit } = createRequire(import.meta.url)("playwright");
 
@@ -42,7 +42,9 @@ async function pageState(page) {
   }));
 }
 
-for (const [engineName, engine] of Object.entries({ chromium, firefox, webkit })) {
+// ENGINES=chromium limite la vérification à un moteur (poste sans Firefox ni WebKit).
+const ENGINES = (process.env.ENGINES ?? "chromium,firefox,webkit").split(",");
+for (const [engineName, engine] of Object.entries({ chromium, firefox, webkit }).filter(([n]) => ENGINES.includes(n))) {
   for (const [screenName, viewport] of Object.entries(SCREENS)) {
     console.log(`\n— ${engineName} · ${screenName}`);
     const browser = await engine.launch();

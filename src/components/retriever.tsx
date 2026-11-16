@@ -316,6 +316,7 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
   const { t, bytes } = useI18n();
   const [playing, setPlaying] = useState(false);
   const [playerFailed, setPlayerFailed] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
   const videoOptions: Option[] = data.qualities.map((q, i) => ({
     id: q.id,
     label: [i === 0 ? t.tool.best(q.label) : q.label, q.codec, q.sizeBytes ? bytes(q.sizeBytes) : null].filter(Boolean).join(" · "),
@@ -342,9 +343,9 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
     />
   ) : (
     <button type="button" onClick={() => setPlaying(true)} className="group absolute inset-0 cursor-pointer" aria-label={t.tool.play}>
-      {data.thumbnail ? (
+      {data.thumbnail && !thumbFailed ? (
         // eslint-disable-next-line @next/next/no-img-element -- miniature distante servie par notre proxy
-        <img src={data.thumbnail} alt={t.tool.thumbnail} className="h-full w-full object-cover" />
+        <img src={data.thumbnail} alt={t.tool.thumbnail} decoding="async" className="h-full w-full object-cover" onError={() => setThumbFailed(true)} />
       ) : (
         <span className="flex h-full w-full bg-gradient-to-b from-panel-hover to-panel" />
       )}
