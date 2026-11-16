@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import { ApiError } from "../errors";
+import { extractTikTokLink } from "../tiktok/url";
 import { isCategory, isStatus, LIMITS, STATUSES, type StatusId, type Ticket, type TicketEvent, type TicketList } from "../support-shared";
 import { EMAIL_RE } from "./auth";
 import { query } from "./db";
@@ -30,12 +31,14 @@ export function validateTicketInput(body: unknown): TicketInput {
   if (!email) fields.email = "L'adresse e-mail est obligatoire.";
   else if (!EMAIL_RE.test(email) || email.length > 254) fields.email = "Cette adresse e-mail n'est pas valide.";
 
+  // Le bouton « Partager » copie souvent une phrase entière : seul le lien TikTok est conservé.
   const rawUrl = str(b.tiktokUrl);
   let tiktokUrl: string | null = null;
   if (rawUrl) {
     try {
-      const u = new URL(/^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`);
-      if (!/(^|\.)tiktok\.com$/i.test(u.hostname) || rawUrl.length > 500) throw new Error("host");
+      const candidate = rawUrl.length > 500 ? rawUrl : extractTikTokLink(rawUrl);
+      const u = new URL(/^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`);
+      if (!/(^|\.)tiktokv?\.com$/i.test(u.hostname) || rawUrl.length > 500) throw new Error("host");
       tiktokUrl = u.toString();
     } catch {
       fields.tiktokUrl = "Indiquez un lien tiktok.com valide, ou laissez ce champ vide.";

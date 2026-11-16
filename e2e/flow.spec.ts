@@ -8,7 +8,6 @@ const video = {
   username: "demo",
   title: "Vidéo de démonstration",
   authorName: "Compte Démo",
-  playerUrl: "https://www.tiktok.com/player/v1/7123456789012345678",
   durationSeconds: 42,
   linkDownload: true,
   qualities: [
@@ -49,8 +48,26 @@ test("coller un lien lance la récupération sans autre action", async ({ page }
   await expect(result.getByRole("button", { name: "Télécharger la vidéo" })).toBeVisible();
   await expect(result.getByRole("button", { name: "Télécharger le son" })).toBeVisible();
   await expect(result.locator("a")).toHaveCount(0);
+  // La lecture se fait dans notre propre lecteur, relayé par le serveur (aucun lecteur TikTok imbriqué).
+  await page.route("**/api/preview?*", () => {}); // requête suspendue : le lecteur reste affiché
   await result.getByRole("button", { name: "Lire la vidéo" }).click();
-  await expect(result.locator("iframe")).toHaveAttribute("src", video.playerUrl);
+  const player = result.getByTestId("player");
+  await expect(player).toHaveAttribute("src", /\/api\/preview\?u=https%3A%2F%2Fwww\.tiktok\.com%2F%40demo%2Fvideo%2F7123456789012345678&q=h264_540p_1-0/);
+  await expect(player).toHaveAttribute("controls", "");
+  await expect(result.locator("iframe")).toHaveCount(0);
+});
+
+test("lecture refusée par TikTok : un message clair remplace le lecteur, sans erreur brute", async ({ page }) => {
+  await page.route("**/api/resolve", (r) => r.fulfill({ json: video }));
+  await page.route("**/api/preview?*", (r) => r.fulfill({ status: 502, json: { error: { code: "UPSTREAM_ERROR", message: "TikTok ne répond pas." } } }));
+  await page.goto("/");
+  await field(page).fill(video.url);
+  await page.getByRole("button", { name: "Récupérer" }).click();
+  const result = page.getByTestId("result");
+  await result.getByRole("button", { name: "Lire la vidéo" }).click();
+  await expect(result).toContainText("Lecture dans la page indisponible");
+  await expect(result.getByRole("link", { name: "Ouvrir dans TikTok" })).toHaveAttribute("href", video.url);
+  await expect(result.getByTestId("player")).toHaveCount(0);
 });
 
 test("la touche Entrée lance la récupération ; vidéo puis son se téléchargent", async ({ page }) => {

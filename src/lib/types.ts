@@ -7,7 +7,6 @@ export type AnalyzeResult = {
   title?: string;
   authorName?: string;
   thumbnail?: string;
-  playerUrl: string;
   durationSeconds?: number;
   /** Le téléchargement direct depuis le lien est-il possible pour ce contenu ? */
   linkDownload: boolean;

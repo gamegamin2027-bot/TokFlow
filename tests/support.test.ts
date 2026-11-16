@@ -46,6 +46,13 @@ describe("validateTicketInput", () => {
   it("accepte un lien TikTok court", () => {
     expect(validateTicketInput({ ...valid, tiktokUrl: "https://vm.tiktok.com/ZMabc123/" }).tiktokUrl).toContain("vm.tiktok.com");
   });
+
+  it("extrait le lien TikTok d'un texte de partage, et accepte lite.tiktok.com comme tiktokv.com", () => {
+    expect(validateTicketInput({ ...valid, tiktokUrl: "Regarde ! https://vt.tiktok.com/ZS4DhDHsR/ envoyé depuis TikTok" }).tiktokUrl).toBe("https://vt.tiktok.com/ZS4DhDHsR/");
+    expect(validateTicketInput({ ...valid, tiktokUrl: "https://lite.tiktok.com/t/ZS4DhDHsR/" }).tiktokUrl).toContain("lite.tiktok.com");
+    expect(validateTicketInput({ ...valid, tiktokUrl: "www.tiktokv.com/share/video/6718335390845095173/" }).tiktokUrl).toContain("tiktokv.com");
+    expect(fieldsOf({ ...valid, tiktokUrl: "https://youtube.com/watch?v=1" })).toHaveProperty("tiktokUrl");
+  });
   it("propose les dix catégories et les cinq statuts demandés", () => {
     expect(CATEGORIES).toHaveLength(10);
     expect(STATUSES.map((s) => s.label)).toEqual(["Nouveau", "En cours", "En attente de réponse", "Résolu", "Fermé"]);

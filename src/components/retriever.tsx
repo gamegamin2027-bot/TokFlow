@@ -7,6 +7,7 @@ import { clipboardFromApp, insideApp } from "@/lib/app-bridge";
 import { DownloadError, requestFile, type DownloadPhase } from "@/lib/client-download";
 import { availableTargets, MP3_BITRATES, type Mp4Target, type OutputFormat } from "@/lib/media/formats";
 import { completeInBrowser } from "@/lib/banners/browser-clips";
+import { extractTikTokLink } from "@/lib/tiktok/url";
 import type { BannerSet } from "@/lib/banners/types";
 import type { AnalyzeResult, ApiErrorBody } from "@/lib/types";
 import { cn, formatDuration } from "@/lib/utils";
@@ -20,12 +21,13 @@ type Option = { id: string; label: string };
 type Failure = { title: string; message: string };
 
 const MAX_UPLOAD_MB = 200;
-const looksLikeTikTok = (v: string) => /(^|\/\/|\.)tiktok\.com\//i.test(v.trim());
+/** Vrai si le texte collé contient un lien TikTok, éventuellement entouré de texte. */
+const looksLikeTikTok = (v: string) => /(^|\/\/|\.)tiktokv?\.com(\/|$)/i.test(v.trim());
 /** Lien de publication photo : il ne peut contenir que des bannières, jamais une vidéo. */
 const looksLikePhotoPost = (v: string) => /tiktok\.com\/(?:[a-z-]+\/)?(?:@[^/?#]*\/|share\/)?photo\/\d+/i.test(v);
 
 /** Réponses du mode Bannières qui signifient seulement « ce lien n'est pas un carrousel ». */
-const notBanners = new Set(["NOT_A_CAROUSEL", "NOT_A_POST", "NOT_TIKTOK", "INVALID_URL", "TOO_MANY_REDIRECTS"]);
+const notBanners = new Set(["NOT_A_CAROUSEL", "NOT_A_POST", "NOT_TIKTOK", "INVALID_URL"]);
 
 type ApiReply<T> = { ok: true; data: T } | { ok: false; error: ApiErrorBody["error"] | null };
 async function postJson<T>(path: string, body: unknown, signal: AbortSignal): Promise<ApiReply<T>> {
@@ -48,7 +50,8 @@ export function Retriever() {
   const request = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (source) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // La fiche se place juste sous l'en-tête collant, jamais à cheval dessus.
+    if (source) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [source]);
   useEffect(() => () => request.current?.abort(), []);
 
@@ -166,9 +169,10 @@ export function Retriever() {
                 // Coller un lien TikTok suffit : la récupération démarre sans autre action.
                 const text = e.clipboardData.getData("text").trim();
                 if (looksLikeTikTok(text)) {
+                  const link = extractTikTokLink(text);
                   e.preventDefault();
-                  setUrl(text);
-                  void retrieve(text);
+                  setUrl(link);
+                  void retrieve(link);
                 }
               }}
               aria-invalid={!!failure}
@@ -283,9 +287,9 @@ function ResultLayout({ media, expanded, badge, title, subtitle, meta, onReset, 
     </dl>
   );
   return (
-    <section aria-label={t.tool.result} data-testid="result" className="rounded-2xl border border-line bg-surface p-4 shadow-card sm:p-6">
+    <section aria-label={t.tool.result} data-testid="result" className="scroll-mt-24 rounded-2xl border border-line bg-surface p-4 shadow-card sm:p-6">
       <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-x-4 gap-y-4 sm:grid-cols-[136px_minmax(0,1fr)] sm:gap-x-6">
-        <div className={cn("relative aspect-[9/16] self-start overflow-hidden rounded-xl border border-line bg-panel", expanded && "col-span-2 mx-auto w-60 sm:col-span-1 sm:w-auto")}>{media}</div>
+        <div className={cn("relative aspect-[9/16] self-start overflow-hidden rounded-xl border border-line bg-panel", expanded && "col-span-2 mx-auto w-[220px] sm:w-[264px]")}>{media}</div>
         <div className={cn("flex min-w-0 flex-col", expanded && "col-span-2 sm:col-span-1")}>
           <div className="flex items-start justify-between gap-2">
             <p className="inline-flex min-h-7 items-center gap-1.5 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-medium leading-4 text-brand-dark">{badge}</p>
@@ -311,13 +315,31 @@ function ResultLayout({ media, expanded, badge, title, subtitle, meta, onReset, 
 function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onReset: () => void; onPickFile: () => void }) {
   const { t, bytes } = useI18n();
   const [playing, setPlaying] = useState(false);
+  const [playerFailed, setPlayerFailed] = useState(false);
   const videoOptions: Option[] = data.qualities.map((q, i) => ({
     id: q.id,
     label: [i === 0 ? t.tool.best(q.label) : q.label, q.codec, q.sizeBytes ? bytes(q.sizeBytes) : null].filter(Boolean).join(" · "),
   }));
 
-  const media = playing ? (
-    <iframe src={data.playerUrl} title={t.tool.player} allow="fullscreen; encrypted-media" className="h-full w-full" />
+  // La qualité la plus légère suffit pour un aperçu : l'image arrive tout de suite.
+  const previewQuality = data.qualities[data.qualities.length - 1]?.id;
+  const media = playing && previewQuality ? (
+    <video
+      src={`/api/preview?u=${encodeURIComponent(data.url)}&q=${encodeURIComponent(previewQuality)}`}
+      poster={data.thumbnail}
+      controls
+      autoPlay
+      loop
+      playsInline
+      preload="metadata"
+      aria-label={t.tool.player}
+      data-testid="player"
+      className="h-full w-full bg-black object-contain"
+      onError={() => {
+        setPlaying(false);
+        setPlayerFailed(true);
+      }}
+    />
   ) : (
     <button type="button" onClick={() => setPlaying(true)} className="group absolute inset-0 cursor-pointer" aria-label={t.tool.play}>
       {data.thumbnail ? (
@@ -352,6 +374,14 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
         { label: t.tool.watermark, value: data.linkDownload ? t.tool.none : undefined },
       ]}
     >
+      {playerFailed && (
+        <Notice tone="warn" className="tf-rise mt-5" icon={<AlertCircle className="h-4.5 w-4.5" />}>
+          {t.tool.playerUnavailable}{" "}
+          <a href={data.url} target="_blank" rel="noreferrer noopener" className="font-medium underline underline-offset-4">
+            {t.tool.watchOnTikTok}
+          </a>
+        </Notice>
+      )}
       {data.linkDownload ? (
         <Exporter
           cleanSource
@@ -567,11 +597,18 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
 
 function ResultSkeleton({ banners }: { banners?: boolean }) {
   const { t } = useI18n();
+  // Au-delà de quelques secondes, le visiteur sait que le site travaille encore.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), 8000);
+    return () => clearTimeout(timer);
+  }, []);
   return (
-    <div className="tf-rise mt-6 rounded-2xl border border-line bg-surface p-4 sm:p-6" data-testid="skeleton">
+    <div className="tf-rise mt-6 rounded-2xl border border-line bg-surface p-4 sm:p-6" data-testid="skeleton" aria-busy="true">
       <p className="mb-4 flex items-center gap-2 text-sm font-medium text-ink">
         <Loader2 className="h-4 w-4 animate-spin text-brand" /> {banners ? t.tool.loadingBanners : t.tool.loadingVideo}
       </p>
+      {slow && <p className="mb-4 text-xs leading-5 text-muted">{t.tool.stillWorking}</p>}
       <div className="flex animate-pulse gap-4 sm:gap-6">
         <div className="aspect-[9/16] w-[88px] shrink-0 rounded-xl bg-canvas sm:w-[136px]" />
         <div className="flex-1 space-y-3 pt-1">

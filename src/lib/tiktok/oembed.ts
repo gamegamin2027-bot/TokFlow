@@ -3,10 +3,7 @@ import { ApiError } from "../errors";
 export type OEmbedInfo = {
   title?: string;
   authorName?: string;
-  authorUrl?: string;
   thumbnailUrl?: string;
-  /** URL du lecteur officiel TikTok (iframe). */
-  playerUrl: string;
 };
 
 /**
@@ -14,7 +11,7 @@ export type OEmbedInfo = {
  * https://developers.tiktok.com/doc/embed-videos/
  * Selon la région du serveur, TikTok peut ne renvoyer que les champs du lecteur.
  */
-export async function fetchOEmbed(videoUrl: string, videoId: string, fetchImpl: typeof fetch = fetch): Promise<OEmbedInfo> {
+export async function fetchOEmbed(videoUrl: string, fetchImpl: typeof fetch = fetch): Promise<OEmbedInfo> {
   let res: Response;
   try {
     res = await fetchImpl(`https://www.tiktok.com/oembed?url=${encodeURIComponent(videoUrl)}`, {
@@ -40,8 +37,6 @@ export async function fetchOEmbed(videoUrl: string, videoId: string, fetchImpl: 
   return {
     title: str(data.title),
     authorName: str(data.author_name),
-    authorUrl: str(data.author_url),
     thumbnailUrl: str(data.thumbnail_url),
-    playerUrl: `https://www.tiktok.com/player/v1/${videoId}?music_info=1&description=1`,
   };
 }

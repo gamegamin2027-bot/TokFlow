@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const link = await resolveTikTokLink(parseTikTokUrl(body.url));
 
     const [oembed, meta] = await Promise.allSettled([
-      fetchOEmbed(link.url, link.id),
+      fetchOEmbed(link.url),
       linkDownloadEnabled() ? fetchLinkMetadata(link.url) : Promise.resolve(null),
     ]);
 
@@ -49,7 +49,6 @@ export async function POST(req: Request) {
       title: m?.title ?? o.title,
       authorName: m?.authorName ?? o.authorName,
       thumbnail: thumb && isAllowedThumbnailUrl(thumb) ? `/api/thumbnail?u=${encodeURIComponent(thumb)}` : undefined,
-      playerUrl: o.playerUrl ?? `https://www.tiktok.com/player/v1/${link.id}`,
       durationSeconds: m?.durationSeconds,
       linkDownload: !linkUnavailableReason,
       linkUnavailableReason,

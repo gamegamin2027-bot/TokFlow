@@ -7,7 +7,6 @@ const video = {
   username: "demo",
   title: "Vidéo de démonstration",
   authorName: "Compte Démo",
-  playerUrl: "https://www.tiktok.com/player/v1/7123456789012345678",
   durationSeconds: 42,
   linkDownload: true,
   qualities: [{ id: "h264_540p_1-0", label: "540p", codec: "H.264", sizeBytes: 2_100_000 }],

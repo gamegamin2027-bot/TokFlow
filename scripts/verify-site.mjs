@@ -176,6 +176,12 @@ async function video() {
   check(r.ok && r.headers.get("content-type") === "audio/mpeg" && (file.toString("latin1", 0, 3) === "ID3" || file[0] === 0xff) && file.length > 20_000, "téléchargement audio MP3", `${r.status} · ${(file.length / 1024).toFixed(0)} Ko`);
   const thumb = data.thumbnail ? await fetch(BASE + data.thumbnail) : null;
   check(!!thumb?.ok && (thumb.headers.get("content-type") ?? "").startsWith("image/"), "miniature");
+  // Aperçu dans la page : le serveur relaie le flux public, le navigateur ne parle jamais au CDN.
+  const preview = await fetch(`${BASE}/api/preview?u=${encodeURIComponent(url)}&q=${encodeURIComponent(data.qualities[data.qualities.length - 1].id)}`);
+  const clip = preview.ok ? await bytes(preview) : Buffer.alloc(0);
+  check(preview.ok && preview.headers.get("content-type") === "video/mp4" && isMp4(clip) && clip.length > 100_000, "aperçu dans la page", `${preview.status} · ${(clip.length / 1e6).toFixed(2)} Mo`);
+  const previewRefus = await fetch(`${BASE}/api/preview?u=${encodeURIComponent("https://example.com/video.mp4")}&q=${encodeURIComponent(quality)}`);
+  check(previewRefus.status === 400, "aperçu refusé hors TikTok", String(previewRefus.status));
   const short = await post("/api/resolve", { url: "https://www.tiktok.com/@scout2015/video/1" });
   check(short.status === 400, "lien vidéo invalide refusé", String(short.status));
 }

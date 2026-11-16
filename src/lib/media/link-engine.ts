@@ -1,7 +1,8 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { Readable } from "node:stream";
 import { config } from "../config";
 import { ApiError } from "../errors";
 
@@ -188,7 +189,31 @@ function recallInfo(url: string): string | undefined {
   infoCache.delete(url);
 }
 
+/** Transforme la sortie JSON du moteur en informations utilisables par l'interface. */
+function readInfo(json: string): LinkMetadata {
+  const d = JSON.parse(json) as { title?: string; uploader?: string; channel?: string; duration?: number; thumbnail?: string; formats?: YtFormat[] };
+  const formats = d.formats ?? [];
+  const qualities = buildQualities(formats);
+  return {
+    title: d.title,
+    authorName: d.channel || d.uploader,
+    durationSeconds: d.duration,
+    thumbnailUrl: d.thumbnail,
+    qualities,
+    watermarkedOnly: qualities.length === 0 && formats.some((f) => isVideo(f) && isWatermarked(f)),
+  };
+}
+
 export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
+  // Second passage sur le même lien (rafraîchissement, seconde tentative) : la réponse est déjà connue.
+  const cached = recallInfo(url);
+  if (cached) {
+    try {
+      return readInfo(cached);
+    } catch {
+      infoCache.delete(url);
+    }
+  }
   let out: string;
   try {
     out = await exec(["-J", "--no-playlist", "--no-warnings", "--socket-timeout", "10", url], networkMode() === "tor" ? 60_000 : 30_000);
@@ -202,17 +227,70 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
     throw mapped;
   }
   rememberInfo(url, out);
-  const d = JSON.parse(out) as { title?: string; uploader?: string; channel?: string; duration?: number; thumbnail?: string; formats?: YtFormat[] };
-  const formats = d.formats ?? [];
-  const qualities = buildQualities(formats);
-  return {
-    title: d.title,
-    authorName: d.channel || d.uploader,
-    durationSeconds: d.duration,
-    thumbnailUrl: d.thumbnail,
-    qualities,
-    watermarkedOnly: qualities.length === 0 && formats.some((f) => isVideo(f) && isWatermarked(f)),
+  return readInfo(out);
+}
+
+/**
+ * Lecture dans la page : les adresses de flux de TikTok ne s'ouvrent que pour TikTok
+ * (le CDN répond 403 à tout autre lecteur), la vidéo est donc relayée par le serveur.
+ * Le flux démarre dès les premiers octets reçus : l'utilisateur voit l'image sans attendre
+ * la fin du fichier, et rien n'est écrit sur le disque.
+ */
+export async function previewStream(url: string, formatId: string, signal: AbortSignal): Promise<ReadableStream<Uint8Array>> {
+  if (!/^[\w.-]{1,80}$/.test(formatId) || formatId.startsWith("download")) throw new ApiError("INVALID_REQUEST", "Qualité inconnue.");
+  const child = spawn(
+    config.ytdlpPath,
+    [...networkArgs(), "--no-playlist", "--no-warnings", "--no-part", "--socket-timeout", "10", "-f", formatId, "-o", "-", url],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  let stderr = "";
+  child.stderr?.on("data", (chunk) => {
+    if (stderr.length < 8000) stderr += String(chunk);
+  });
+  const stop = () => {
+    if (!child.killed) child.kill("SIGKILL");
   };
+  signal.addEventListener("abort", stop, { once: true });
+  child.on("close", () => signal.removeEventListener("abort", stop));
+
+  const stdout = child.stdout!;
+  // On attend le premier octet : une erreur du moteur devient une vraie erreur HTTP,
+  // au lieu d'un lecteur qui tourne dans le vide.
+  const first = await new Promise<Buffer>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      stop();
+      reject(new ApiError("TIMEOUT", "La vidéo met trop de temps à démarrer. Réessayez dans un instant."));
+    }, 20_000);
+    const settle = (fn: () => void) => {
+      clearTimeout(timer);
+      stdout.off("data", onData);
+      child.off("error", onError);
+      child.off("close", onClose);
+      fn();
+    };
+    const onData = (chunk: Buffer) => settle(() => { stdout.pause(); resolve(chunk); });
+    const onError = (e: NodeJS.ErrnoException) =>
+      settle(() => reject(e.code === "ENOENT" ? new ApiError("LINK_DOWNLOAD_DISABLED", "Le moteur de récupération n'est pas installé sur le serveur.") : new ApiError("UPSTREAM_ERROR")));
+    const onClose = () => settle(() => reject(classifyEngineError(stderr)));
+    stdout.on("data", onData);
+    child.on("error", onError);
+    child.on("close", onClose);
+  }).catch((e) => {
+    signal.removeEventListener("abort", stop);
+    throw e;
+  });
+
+  const body = Readable.from(
+    (async function* () {
+      try {
+        yield first;
+        for await (const chunk of stdout) yield chunk as Buffer;
+      } finally {
+        stop();
+      }
+    })(),
+  );
+  return Readable.toWeb(body) as ReadableStream<Uint8Array>;
 }
 
 /**

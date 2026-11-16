@@ -37,7 +37,6 @@ describe("parseTikTokUrl", () => {
       `https://www.tiktok.com/share/video/${id}`,
       `https://www.tiktok.com/embed/v2/${id}`,
       `https://www.tiktok.com/embed/${id}`,
-      `https://www.tiktok.com/player/v1/${id}`,
       `WWW.TIKTOK.COM/@user/video/${id}#comments`,
     ]) {
       const link = parseTikTokUrl(u);

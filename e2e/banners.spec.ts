@@ -144,7 +144,7 @@ test("lien court menant à un carrousel : la vidéo est écartée, les bannière
 });
 
 test("publication « vidéo » sans flux vidéo : les bannières sont recherchées ; à défaut, le résultat vidéo habituel", async ({ page }) => {
-  const video = { id: "7000000000000000001", url: "https://www.tiktok.com/@demo/video/7000000000000000001", username: "demo", title: "Diaporama", playerUrl: "https://www.tiktok.com/player/v1/7000000000000000001", linkDownload: false, linkUnavailableReason: "Aucun flux vidéo public n'est proposé pour ce contenu.", qualities: [] };
+  const video = { id: "7000000000000000001", url: "https://www.tiktok.com/@demo/video/7000000000000000001", username: "demo", title: "Diaporama", linkDownload: false, linkUnavailableReason: "Aucun flux vidéo public n'est proposé pour ce contenu.", qualities: [] };
   let carousel = true;
   const calls = await mock(page, { banners: (r) => (carousel ? r.fulfill({ json: set }) : r.fulfill({ status: 400, json: { error: { code: "NOT_A_CAROUSEL", message: "Cette publication est une vidéo classique, pas un carrousel de bannières." } } })) });
   await page.route("**/api/resolve", (r) => r.fulfill({ json: video }));
