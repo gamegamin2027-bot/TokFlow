@@ -289,7 +289,7 @@ function ResultLayout({ media, expanded, badge, title, subtitle, meta, onReset, 
   return (
     <section aria-label={t.tool.result} data-testid="result" className="scroll-mt-24 rounded-2xl border border-line bg-surface p-4 shadow-card sm:p-6">
       <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-x-4 gap-y-4 sm:grid-cols-[136px_minmax(0,1fr)] sm:gap-x-6">
-        <div className={cn("relative aspect-[9/16] self-start overflow-hidden rounded-xl border border-line bg-panel", expanded && "col-span-2 mx-auto w-[220px] sm:w-[264px]")}>{media}</div>
+        <div className={cn("relative aspect-[9/16] self-start overflow-hidden rounded-xl border border-line bg-panel", expanded && "col-span-2 mx-auto w-full max-w-[280px] sm:max-w-[300px]")}>{media}</div>
         <div className={cn("flex min-w-0 flex-col", expanded && "col-span-2 sm:col-span-1")}>
           <div className="flex items-start justify-between gap-2">
             <p className="inline-flex min-h-7 items-center gap-1.5 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-medium leading-4 text-brand-dark">{badge}</p>
