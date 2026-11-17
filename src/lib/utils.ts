@@ -17,3 +17,17 @@ export function formatDuration(seconds: number): string {
   const s = Math.round(seconds);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
+
+/**
+ * Nom de fichier lisible dans une ligne de largeur limitée : le début et l'extension
+ * restent visibles, seul le milieu est raccourci (« TokFlow-7707…4690.mp4 »).
+ */
+export function shortFileName(name: string, max = 34): string {
+  if (name.length <= max) return name;
+  const dot = name.lastIndexOf(".");
+  const ext = dot > 0 ? name.slice(dot) : "";
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const keep = Math.max(6, max - ext.length - 1);
+  const head = Math.ceil(keep * 0.62);
+  return `${stem.slice(0, head)}…${stem.slice(stem.length - (keep - head))}${ext}`;
+}

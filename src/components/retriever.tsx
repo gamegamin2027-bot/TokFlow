@@ -10,7 +10,7 @@ import { completeInBrowser } from "@/lib/banners/browser-clips";
 import { extractTikTokLink } from "@/lib/tiktok/url";
 import type { BannerSet } from "@/lib/banners/types";
 import type { AnalyzeResult, ApiErrorBody } from "@/lib/types";
-import { cn, formatDuration } from "@/lib/utils";
+import { cn, formatDuration, shortFileName } from "@/lib/utils";
 import { BannerGrid } from "./banner-grid";
 import { useI18n } from "./i18n-provider";
 import { Button } from "./ui/button";
@@ -123,6 +123,16 @@ export function Retriever() {
       setFailure({ title: f.clipboardTitle, message: f.clipboard });
     }
   }
+
+  /** Retour au champ : le visiteur enchaîne sur un autre lien sans chercher le formulaire. */
+  const startOver = useCallback(() => {
+    request.current?.abort();
+    setLoading(false);
+    setUrl("");
+    reset();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.setTimeout(() => document.getElementById("tiktok-url")?.focus({ preventScroll: true }), 400);
+  }, [reset]);
 
   function pickFile(file: File | undefined) {
     if (!file) return;
@@ -251,7 +261,7 @@ export function Retriever() {
             {source.kind === "banners" ? (
               <BannerGrid data={source.data} onReset={reset} onRetry={() => void retrieve(url)} />
             ) : source.kind === "link" ? (
-              <LinkResult data={source.data} onReset={reset} onPickFile={() => fileInput.current?.click()} />
+              <LinkResult data={source.data} onReset={reset} onPickFile={() => fileInput.current?.click()} onNewVideo={startOver} />
             ) : (
               <FileResult source={source} onReset={reset} onMeta={(shortSide, duration) => setSource((s) => (s?.kind === "file" && s.shortSide === undefined ? { ...s, shortSide, duration } : s))} />
             )}
@@ -312,35 +322,47 @@ function ResultLayout({ media, expanded, badge, title, subtitle, meta, onReset, 
 
 /* ---------- Résultat : lien ---------- */
 
-function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onReset: () => void; onPickFile: () => void }) {
+function LinkResult({ data, onReset, onPickFile, onNewVideo }: { data: AnalyzeResult; onReset: () => void; onPickFile: () => void; onNewVideo: () => void }) {
   const { t, bytes } = useI18n();
   const [playing, setPlaying] = useState(false);
+  const [playerReady, setPlayerReady] = useState(false);
   const [playerFailed, setPlayerFailed] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
   const videoOptions: Option[] = data.qualities.map((q, i) => ({
     id: q.id,
-    label: [i === 0 ? t.tool.best(q.label) : q.label, q.codec, q.sizeBytes ? bytes(q.sizeBytes) : null].filter(Boolean).join(" · "),
+    // Taille annoncée par TikTok : elle peut différer de quelques pour cent du fichier final, d'où le « ≈ ».
+    label: [i === 0 ? t.tool.best(q.label) : q.label, q.codec, q.sizeBytes ? t.tool.approx(bytes(q.sizeBytes)) : null].filter(Boolean).join(" · "),
   }));
 
   // La qualité la plus légère suffit pour un aperçu : l'image arrive tout de suite.
   const previewQuality = data.qualities[data.qualities.length - 1]?.id;
   const media = playing && previewQuality ? (
-    <video
-      src={`/api/preview?u=${encodeURIComponent(data.url)}&q=${encodeURIComponent(previewQuality)}`}
-      poster={data.thumbnail}
-      controls
-      autoPlay
-      loop
-      playsInline
-      preload="metadata"
-      aria-label={t.tool.player}
-      data-testid="player"
-      className="h-full w-full bg-black object-contain"
-      onError={() => {
-        setPlaying(false);
-        setPlayerFailed(true);
-      }}
-    />
+    // L'affiche reste visible pendant le démarrage du flux : plus de rectangle noir.
+    <span className="relative block h-full w-full bg-black">
+      <video
+        src={`/api/preview?u=${encodeURIComponent(data.url)}&q=${encodeURIComponent(previewQuality)}`}
+        poster={data.thumbnail}
+        controls
+        autoPlay
+        loop
+        playsInline
+        preload="metadata"
+        aria-label={t.tool.player}
+        data-testid="player"
+        className={cn("h-full w-full object-contain transition-opacity duration-300", playerReady ? "opacity-100" : "opacity-90")}
+        onCanPlay={() => setPlayerReady(true)}
+        onError={() => {
+          setPlaying(false);
+          setPlayerFailed(true);
+        }}
+      />
+      {!playerReady && (
+        <span className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/45 text-xs font-medium text-white">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          {t.tool.playerLoading}
+        </span>
+      )}
+    </span>
   ) : (
     <button type="button" onClick={() => setPlaying(true)} className="group absolute inset-0 cursor-pointer" aria-label={t.tool.play}>
       {data.thumbnail && !thumbFailed ? (
@@ -385,6 +407,7 @@ function LinkResult({ data, onReset, onPickFile }: { data: AnalyzeResult; onRese
       )}
       {data.linkDownload ? (
         <Exporter
+          onNewVideo={onNewVideo}
           cleanSource
           videoOptions={videoOptions}
           run={(format, video, audio, onPhase, signal) =>
@@ -481,11 +504,13 @@ function FileResult({ source, onReset, onMeta }: { source: Extract<Source, { kin
 /* ---------- Les deux actions : vidéo et son ---------- */
 
 
-function Exporter({ videoOptions, cleanSource = false, run }: {
+function Exporter({ videoOptions, cleanSource = false, run, onNewVideo }: {
   videoOptions: Option[];
   /** Vrai lorsque la source est le flux d'origine TikTok, sans filigrane. */
   cleanSource?: boolean;
   run: (format: OutputFormat, video: string, audio: string, onPhase: (p: DownloadPhase) => void, signal: AbortSignal) => Promise<void>;
+  /** Propose de repartir d'un nouveau lien une fois le fichier enregistré. */
+  onNewVideo?: () => void;
 }) {
   const { t, bytes, apiMessage } = useI18n();
   const audioOptions: Option[] = MP3_BITRATES.map((b) => ({ id: String(b), label: t.tool.bitrate(b) }));
@@ -494,6 +519,8 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
   const [active, setActive] = useState<OutputFormat | null>(null);
   const [phase, setPhase] = useState<DownloadPhase | null>(null);
   const [error, setError] = useState<{ format: OutputFormat; message: string } | null>(null);
+  const [cancelled, setCancelled] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => () => abort.current?.abort(), []);
@@ -506,8 +533,24 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
   const busy = phase?.state === "preparing" || phase?.state === "downloading";
   const hasVideo = videoOptions.length > 0;
 
+  // Temps écoulé affiché pendant la préparation : le visiteur voit que le serveur travaille.
+  useEffect(() => {
+    if (!busy) return;
+    const from = Date.now();
+    setElapsed(0);
+    const timer = setInterval(() => setElapsed(Math.round((Date.now() - from) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [busy]);
+
+  /** Annulation volontaire : l'utilisateur doit avoir un retour, pas un écran figé. */
+  function cancel() {
+    setCancelled(true);
+    abort.current?.abort();
+  }
+
   async function start(format: OutputFormat) {
     setError(null);
+    setCancelled(false);
     setActive(format);
     abort.current = new AbortController();
     try {
@@ -540,39 +583,68 @@ function Exporter({ videoOptions, cleanSource = false, run }: {
         </div>
       </div>
 
-      <div aria-live="polite">
-        {busy && (
-          <div className="tf-rise mt-4 rounded-xl border border-line bg-canvas/60 p-4" data-testid="progress">
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="inline-flex items-center gap-2 font-medium text-ink">
-                <Loader2 className="h-4 w-4 animate-spin text-brand" />
-                {phase?.state === "preparing" ? (active === "mp3" ? t.tool.extracting : t.tool.preparing) : t.tool.downloading(pct !== null ? t.tool.percent(pct) : bytes(phase?.state === "downloading" ? phase.received : 0))}
-              </span>
-              <button type="button" onClick={() => abort.current?.abort()} className="cursor-pointer text-xs font-medium text-muted hover:text-ink">
-                {t.tool.cancel}
-              </button>
-            </div>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}>
-              {pct === null ? <div className="tf-indeterminate h-full w-1/3 rounded-full bg-brand" /> : <div className="h-full rounded-full bg-brand transition-[width] duration-200" style={{ width: `${pct}%` }} />}
-            </div>
+      {/*
+        Zone de statut : sa hauteur s'ouvre en douceur (classe tf-slot), donc les
+        boutons et les sélecteurs ne sautent plus quand la progression apparaît.
+      */}
+      <div className="tf-slot" data-open={busy || !!phase || !!error || cancelled ? "true" : "false"}>
+        <div>
+          <div aria-live="polite" className="pt-4">
+            {busy && (
+              <div className="rounded-xl border border-line bg-canvas/60 p-4" data-testid="progress">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-sm font-medium text-ink">
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand" />
+                      {phase?.state === "preparing" ? (active === "mp3" ? t.tool.extracting : t.tool.preparing) : t.tool.downloading(pct !== null ? t.tool.percent(pct) : "")}
+                    </p>
+                    <p className="mt-1 pl-6 text-xs text-muted">
+                      {phase?.state === "downloading" && phase.total ? t.tool.progressOf(bytes(phase.received), bytes(phase.total)) : t.tool.elapsed(elapsed)}
+                    </p>
+                  </div>
+                  <button type="button" onClick={cancel} className="-my-2 -mr-1 flex min-h-11 shrink-0 cursor-pointer items-center rounded-lg px-2 text-xs font-medium text-muted transition-colors hover:bg-ink/5 hover:text-ink">
+                    {t.tool.cancel}
+                  </button>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined} aria-label={t.tool.downloadVideo}>
+                  {pct === null ? (
+                    <div className="tf-indeterminate h-full w-1/3 rounded-full bg-brand" />
+                  ) : (
+                    <div className="h-full rounded-full bg-brand transition-[width] duration-200 ease-out" style={{ width: `${pct}%` }} />
+                  )}
+                </div>
+              </div>
+            )}
+            {phase?.state === "saved" && (
+              <Notice tone="success" className="tf-fade" icon={<Check className="tf-check h-4.5 w-4.5" />}>
+                <span data-testid="saved" className="block">
+                  <span className="break-words font-medium" title={phase.fileName}>
+                    {shortFileName(phase.fileName)}
+                  </span>
+                  {t.tool.saved(bytes(phase.size))}
+                </span>
+                {onNewVideo && (
+                  <button type="button" onClick={onNewVideo} className="mt-2 flex min-h-11 cursor-pointer items-center gap-1.5 font-medium underline underline-offset-4">
+                    <RotateCcw className="h-3.5 w-3.5" /> {t.tool.newVideo}
+                  </button>
+                )}
+              </Notice>
+            )}
+            {cancelled && !busy && (
+              <Notice tone="info" className="tf-fade" icon={<AlertCircle className="h-4.5 w-4.5" />}>
+                {t.tool.cancelled}
+              </Notice>
+            )}
+            {error && (
+              <Notice tone="danger" className="tf-fade" title={t.tool.failedTitle} icon={<AlertCircle className="h-4.5 w-4.5" />}>
+                {error.message}
+                <button type="button" onClick={() => start(error.format)} className="mt-2 flex min-h-11 cursor-pointer items-center gap-1.5 font-medium underline underline-offset-4">
+                  <RotateCcw className="h-3.5 w-3.5" /> {t.common.retry}
+                </button>
+              </Notice>
+            )}
           </div>
-        )}
-        {phase?.state === "saved" && (
-          <Notice tone="success" className="tf-rise mt-4" icon={<Check className="h-4.5 w-4.5" />}>
-            <span data-testid="saved" className="block truncate">
-              <span className="font-medium">{phase.fileName}</span>
-              {t.tool.saved(bytes(phase.size))}
-            </span>
-          </Notice>
-        )}
-        {error && (
-          <Notice tone="danger" className="tf-rise mt-4" title={t.tool.failedTitle} icon={<AlertCircle className="h-4.5 w-4.5" />}>
-            {error.message}
-            <button type="button" onClick={() => start(error.format)} className="mt-2 flex cursor-pointer items-center gap-1.5 font-medium underline underline-offset-4">
-              <RotateCcw className="h-3.5 w-3.5" /> {t.common.retry}
-            </button>
-          </Notice>
-        )}
+        </div>
       </div>
 
       <div className={cn("mt-5 grid gap-3", hasVideo && "sm:grid-cols-2")}>

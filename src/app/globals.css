@@ -105,10 +105,31 @@ body {
 .tf-pop { animation: tf-pop 0.12s ease-out; }
 .tf-rise { animation: tf-rise 0.25s ease-out both; }
 /* Entrée du haut de page : en CSS pour ne pas attendre le JavaScript (titre visible tout de suite). */
-@keyframes tf-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* Entrée du haut de page : le texte est peint tout de suite (seul le déplacement s'anime),
+   sinon le plus grand élément de la page attend la fin de l'animation avant d'être affiché. */
+@keyframes tf-enter { from { transform: translateY(10px); } to { transform: none; } }
 .tf-enter { animation: tf-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .tf-acc[data-state="open"] { animation: tf-acc-down 0.2s ease-out; }
 .tf-acc[data-state="closed"] { animation: tf-acc-up 0.2s ease-out; }
+
+/* Zone de statut repliable : sa hauteur s'ouvre en douceur, rien ne saute sous le doigt. */
+.tf-slot { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.24s cubic-bezier(0.22, 1, 0.36, 1); }
+.tf-slot[data-open="true"] { grid-template-rows: 1fr; }
+.tf-slot > * { overflow: hidden; }
+
+/* Apparition des messages : fondu court, jamais de déplacement du texte déjà lu. */
+@keyframes tf-fade { from { opacity: 0; } to { opacity: 1; } }
+.tf-fade { animation: tf-fade 0.2s ease-out both; }
+
+/* Coche de réussite : un petit rebond, une seule fois. */
+@keyframes tf-check { 0% { opacity: 0; transform: scale(0.5); } 60% { transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
+.tf-check { animation: tf-check 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Pression des boutons : retour tactile discret. */
+@media (hover: hover) {
+  .tf-press { transition: transform 0.12s ease, box-shadow 0.12s ease; }
+  .tf-press:active { transform: translateY(1px) scale(0.995); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }

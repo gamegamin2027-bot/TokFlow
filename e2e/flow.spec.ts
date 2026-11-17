@@ -57,6 +57,31 @@ test("coller un lien lance la récupération sans autre action", async ({ page }
   await expect(result.locator("iframe")).toHaveCount(0);
 });
 
+test("après un téléchargement réussi : nom lisible, taille réelle et retour au champ", async ({ page }) => {
+  await page.route("**/api/resolve", (r) => r.fulfill({ json: video }));
+  await page.route("**/api/download", (r) =>
+    r.fulfill({
+      status: 200,
+      headers: { "content-type": "video/mp4", "content-disposition": 'attachment; filename="TokFlow-7707002491761724690-version-longue.mp4"', "content-length": "2048" },
+      body: Buffer.alloc(2048),
+    }),
+  );
+  await page.goto("/");
+  await field(page).fill(video.url);
+  await page.getByRole("button", { name: "Récupérer" }).click();
+  await page.getByTestId("download-video").click();
+  const saved = page.getByTestId("saved");
+  await expect(saved).toBeVisible();
+  // Le nom est raccourci au milieu, l'extension reste visible.
+  await expect(saved).toContainText("…");
+  await expect(saved).toContainText(".mp4");
+  await expect(saved).toContainText("2,0 Ko");
+  // Puis on repart d'un lien vide, prêt à coller le suivant.
+  await page.getByRole("button", { name: "Télécharger une autre vidéo" }).click();
+  await expect(field(page)).toHaveValue("");
+  await expect(page.getByTestId("result")).toHaveCount(0);
+});
+
 test("lecture refusée par TikTok : un message clair remplace le lecteur, sans erreur brute", async ({ page }) => {
   await page.route("**/api/resolve", (r) => r.fulfill({ json: video }));
   await page.route("**/api/preview?*", (r) => r.fulfill({ status: 502, json: { error: { code: "UPSTREAM_ERROR", message: "TikTok ne répond pas." } } }));
