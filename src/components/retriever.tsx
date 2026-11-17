@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { AlertCircle, ArrowRight, Check, ClipboardPaste, Download, FileVideo, Link2, Loader2, Music, Play, RotateCcw, Upload, X } from "lucide-react";
 import { clipboardFromApp, insideApp } from "@/lib/app-bridge";
 import { DownloadError, requestFile, type DownloadPhase } from "@/lib/client-download";
@@ -11,7 +12,9 @@ import { extractTikTokLink } from "@/lib/tiktok/url";
 import type { BannerSet } from "@/lib/banners/types";
 import type { AnalyzeResult, ApiErrorBody } from "@/lib/types";
 import { cn, formatDuration, shortFileName } from "@/lib/utils";
-import { BannerGrid } from "./banner-grid";
+// Le mode Bannières n'est chargé que lorsqu'un carrousel est demandé : la page d'accueil
+// et le téléchargement de vidéos n'embarquent pas ce code.
+const BannerGrid = dynamic(() => import("./banner-grid").then((m) => m.BannerGrid), { ssr: false });
 import { useI18n } from "./i18n-provider";
 import { Button } from "./ui/button";
 import { Notice, Select } from "./ui/field";
@@ -87,7 +90,10 @@ export function Retriever() {
           // 2. Bannières : carrousel de photos, ou publication sans flux vidéo.
           setLoading("banners");
           const banners = await postJson<BannerSet>("/api/banners", { url: video?.ok ? video.data.url : value }, controller.signal);
-          if (banners.ok) setSource({ kind: "banners", data: await completeInBrowser(banners.data, controller.signal) });
+          if (banners.ok) {
+            const { completeInBrowser } = await import("@/lib/banners/browser-clips");
+            setSource({ kind: "banners", data: await completeInBrowser(banners.data, controller.signal) });
+          }
           else if (video?.ok) setSource({ kind: "link", data: video.data });
           else if (video && (!banners.error || notBanners.has(banners.error.code))) fail(video.error, f.videoFallback);
           else fail(banners.error, f.bannersFallback);
