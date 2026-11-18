@@ -131,6 +131,7 @@ export const de: Dictionary = {
     videoHintClean: "MP4 · ohne Wasserzeichen · mit Ton",
     videoHint: "MP4 · mit Ton",
     audioHint: "MP3 · nur die Tonspur",
+    inAppHint: (name: string) => `Du bist im integrierten Browser von ${name}: Dort sind Downloads blockiert. Öffne TokFlow in Chrome oder Safari.`,
     extracting: "Ton wird extrahiert…",
     preparing: "Video wird vorbereitet…",
     downloading: (progress: string) => `Download läuft… ${progress}`,

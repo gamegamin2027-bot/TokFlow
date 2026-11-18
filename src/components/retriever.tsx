@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { AlertCircle, ArrowRight, Check, ClipboardPaste, Download, FileVideo, Link2, Loader2, Music, Play, RotateCcw, Upload, X } from "lucide-react";
+import { AlertCircle, ArrowRight, Info, Check, ClipboardPaste, Download, FileVideo, Link2, Loader2, Music, Play, RotateCcw, Upload, X } from "lucide-react";
 import { clipboardFromApp, insideApp } from "@/lib/app-bridge";
+import { inAppBrowser } from "@/lib/in-app-browser";
 import { DownloadError, requestFile, type DownloadPhase } from "@/lib/client-download";
 import { availableTargets, MP3_BITRATES, type Mp4Target, type OutputFormat } from "@/lib/media/formats";
 import { extractTikTokLink } from "@/lib/tiktok/url";
@@ -576,6 +577,10 @@ function Exporter({ videoOptions, cleanSource = false, run, onNewVideo }: {
     }
   }
 
+  // Navigateur intégré à une application : les téléchargements y sont bloqués sans message.
+  const [inApp, setInApp] = useState<string | null>(null);
+  useEffect(() => setInApp(insideApp() ? null : inAppBrowser()), []);
+
   const pct = phase?.state === "downloading" && phase.total ? Math.min(100, Math.round((phase.received / phase.total) * 100)) : null;
 
   return (
@@ -596,6 +601,12 @@ function Exporter({ videoOptions, cleanSource = false, run, onNewVideo }: {
           <p className="mt-1.5 text-center text-xs text-muted">{t.tool.audioHint}</p>
         </div>
       </div>
+      {inApp && (
+        <p className="mt-3 flex items-start justify-center gap-1.5 text-[13px] text-muted" data-testid="inapp-hint">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span>{t.tool.inAppHint(inApp)}</span>
+        </p>
+      )}
 
       {/*
         Zone de statut : sa hauteur s'ouvre en douceur (classe tf-slot), donc les

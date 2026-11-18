@@ -131,6 +131,7 @@ export const fr = {
     videoHintClean: "MP4 · sans filigrane · avec le son",
     videoHint: "MP4 · avec le son",
     audioHint: "MP3 · piste audio seule",
+    inAppHint: (name: string) => `Vous êtes dans le navigateur intégré de ${name} : les téléchargements y sont bloqués. Ouvrez TokFlow dans Chrome ou Safari.`,
     extracting: "Extraction du son…",
     preparing: "Préparation de la vidéo…",
     downloading: (progress: string) => `Téléchargement… ${progress}`,

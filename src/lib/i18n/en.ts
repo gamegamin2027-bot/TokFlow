@@ -133,6 +133,7 @@ export const en: Dictionary = {
     videoHintClean: "MP4 · no watermark · with sound",
     videoHint: "MP4 · with sound",
     audioHint: "MP3 · audio track only",
+    inAppHint: (name: string) => `You are in the ${name} built-in browser, where downloads are blocked. Open TokFlow in Chrome or Safari.`,
     extracting: "Extracting the sound…",
     preparing: "Preparing the video…",
     downloading: (progress: string) => `Downloading… ${progress}`,
