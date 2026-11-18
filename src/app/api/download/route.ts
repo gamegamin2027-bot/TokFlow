@@ -1,10 +1,10 @@
 import { join } from "node:path";
 import { config, linkDownloadEnabled } from "@/lib/config";
 import { ApiError, errorResponse } from "@/lib/errors";
-import { convert, mp3Args, mp4Args, probe } from "@/lib/media/ffmpeg";
+import { convert, convertToMp3, mp4Args, probe } from "@/lib/media/ffmpeg";
 import { isMp3Bitrate, safeFileName } from "@/lib/media/formats";
 import { acquireJob, createWorkDir, fileDownloadResponse } from "@/lib/media/jobs";
-import { downloadFromLink } from "@/lib/media/link-engine";
+import { downloadAudioFromLink, downloadFromLink } from "@/lib/media/link-engine";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { parseTikTokUrl } from "@/lib/tiktok/url";
 
@@ -41,7 +41,8 @@ export async function POST(req: Request) {
     const work = await createWorkDir();
     cleanup = work.cleanup;
 
-    const source = await downloadFromLink(link.url, work.dir, quality);
+    // MP3 : on ne télécharge que la piste audio (plus léger et plus rapide) ; MP4 : la vidéo.
+    const source = format === "mp3" ? await downloadAudioFromLink(link.url, work.dir) : await downloadFromLink(link.url, work.dir, quality);
     const info = await probe(source);
     if (info.durationSeconds && info.durationSeconds > config.maxDurationSeconds) throw new ApiError("TOO_LONG");
 
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
     if (format === "mp3") {
       if (!info.hasAudio) throw new ApiError("UNSUPPORTED_MEDIA", "Cette vidéo ne contient pas de piste audio.");
       const out = join(work.dir, "out.mp3");
-      await convert(mp3Args(source, out, bitrate as 128 | 192 | 320));
+      await convertToMp3(source, out, bitrate as 128 | 192 | 320, work.dir);
       return await fileDownloadResponse(out, safeFileName(base, "mp3"), "audio/mpeg", finish);
     }
     // MP4 : remux sans ré-encodage (vidéo + audio d'origine, démarrage rapide).

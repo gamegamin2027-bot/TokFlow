@@ -52,7 +52,6 @@ export async function POST(req: Request) {
       durationSeconds: m?.durationSeconds,
       linkDownload: !linkUnavailableReason,
       linkUnavailableReason,
-      engineDetail: meta.status === "rejected" ? (meta.reason as { detail?: string })?.detail : undefined,
       qualities: linkUnavailableReason ? [] : (m?.qualities ?? []),
     };
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });

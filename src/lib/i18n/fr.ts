@@ -174,6 +174,7 @@ export const fr = {
       TIKTOK_FORMAT: "TikTok a répondu de façon inattendue",
       TOO_MANY: "Publication trop volumineuse",
       BUSY: "Le service est très sollicité",
+      AUDIO_EXTRACTION_FAILED: "Le son n'a pas pu être extrait",
     } as Record<string, string>,
     /** Messages détaillés par code. Vide en français : le serveur fournit déjà le texte. */
     messages: {} as Record<string, string>,

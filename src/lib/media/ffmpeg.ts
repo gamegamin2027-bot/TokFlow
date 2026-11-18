@@ -47,8 +47,29 @@ export async function probe(file: string): Promise<ProbeResult> {
   return parseProbe(stderr);
 }
 
+/**
+ * Piste audio vers MP3. `-ac 2` et le rééchantillonneur explicite évitent l'échec
+ * « Failed to configure output pad on auto_aresample » : certaines vidéos TikTok ont
+ * une piste dont le format de canaux change en cours de lecture (mono puis stéréo,
+ * multicanal, débit variable). Sans ces réglages, ffmpeg abandonnait en plein milieu.
+ */
 export function mp3Args(input: string, output: string, bitrate: Mp3Bitrate): string[] {
-  return ["-hide_banner", "-nostdin", "-y", "-i", input, "-vn", "-map", "0:a:0", "-c:a", "libmp3lame", "-b:a", `${bitrate}k`, "-ar", "44100", "-map_metadata", "-1", "-f", "mp3", output];
+  return [
+    "-hide_banner", "-nostdin", "-y",
+    // Une image audio abîmée ne doit pas faire échouer tout le fichier : on l'ignore.
+    "-err_detect", "ignore_err", "-fflags", "+discardcorrupt",
+    "-i", input,
+    "-vn", "-map", "0:a:0",
+    "-af", "aresample=async=1:min_hard_comp=0.1:first_pts=0",
+    "-ac", "2", "-ar", "44100",
+    "-c:a", "libmp3lame", "-b:a", `${bitrate}k`,
+    "-map_metadata", "-1", "-f", "mp3", output,
+  ];
+}
+
+/** Étape intermédiaire de secours : la piste audio est d'abord ramenée en WAV brut. */
+export function wavArgs(input: string, output: string): string[] {
+  return ["-hide_banner", "-nostdin", "-y", "-err_detect", "ignore_err", "-fflags", "+discardcorrupt", "-i", input, "-vn", "-map", "0:a:0", "-af", "aresample=async=1:first_pts=0", "-ac", "2", "-ar", "44100", "-c:a", "pcm_s16le", "-map_metadata", "-1", "-f", "wav", output];
 }
 
 export function mp4Args(input: string, output: string, target: Mp4Target): string[] {
@@ -73,5 +94,30 @@ export async function convert(args: string[]): Promise<void> {
   if (result.code !== 0) {
     console.error("[tokflow] ffmpeg a échoué:", result.stderr.slice(-600));
     throw new ApiError("CONVERSION_FAILED");
+  }
+}
+
+/**
+ * Convertit une source (vidéo ou piste audio) en MP3, avec un second essai par WAV brut.
+ * Le premier essai échoue sur certaines pistes TikTok dont le format change en cours de
+ * lecture (« Failed to configure output pad on auto_aresample ») ; le passage par un WAV
+ * propre contourne le problème. Si les deux essais échouent, le code d'erreur est explicite
+ * pour que le visiteur se voie proposer la vidéo à la place.
+ */
+export async function convertToMp3(source: string, output: string, bitrate: Mp3Bitrate, workDir: string): Promise<void> {
+  try {
+    await convert(mp3Args(source, output, bitrate));
+    return;
+  } catch (e) {
+    if (!(e instanceof ApiError) || e.code !== "CONVERSION_FAILED") throw e;
+    console.warn("[tokflow] conversion MP3 directe refusée, second essai par WAV");
+  }
+  const wav = `${workDir}/fallback.wav`;
+  try {
+    await convert(wavArgs(source, wav));
+    await convert(mp3Args(wav, output, bitrate));
+  } catch (e) {
+    if (e instanceof ApiError) throw new ApiError("AUDIO_EXTRACTION_FAILED");
+    throw e;
   }
 }

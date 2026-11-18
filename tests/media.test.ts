@@ -1,8 +1,32 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { mp3Args, mp4Args, parseProbe } from "@/lib/media/ffmpeg";
+import { mp3Args, mp4Args, parseProbe, wavArgs } from "@/lib/media/ffmpeg";
 import { availableTargets, parseMp4Target, safeFileName } from "@/lib/media/formats";
 import { buildQualities, isWatermarked } from "@/lib/media/link-engine";
 import { checkRateLimit, resetRateLimits } from "@/lib/rate-limit";
+
+describe("réglages de conversion audio", () => {
+  const mp3 = mp3Args("in.mp4", "out.mp3", 192).join(" ");
+  it("force la stéréo 44,1 kHz, seul moyen de convertir une piste multicanale", () => {
+    expect(mp3).toContain("-ac 2");
+    expect(mp3).toContain("-ar 44100");
+  });
+  it("tolère une piste abîmée au lieu d'abandonner la conversion", () => {
+    // Échec constaté en production : « Failed to configure output pad on auto_aresample »
+    expect(mp3).toContain("aresample=async=1");
+    expect(mp3).toContain("-err_detect ignore_err");
+    expect(mp3).toContain("+discardcorrupt");
+  });
+  it("ne garde pas les métadonnées et produit un vrai MP3", () => {
+    expect(mp3).toContain("-map_metadata -1");
+    expect(mp3).toContain("-f mp3");
+  });
+  it("l'étape de secours intermédiaire passe par un WAV brut", () => {
+    const wav = wavArgs("in.mp4", "mid.wav").join(" ");
+    expect(wav).toContain("pcm_s16le");
+    expect(wav).toContain("-ac 2");
+    expect(wav).toContain("-f wav");
+  });
+});
 
 describe("buildQualities", () => {
   const formats = [

@@ -14,6 +14,7 @@ export type ErrorCode =
   | "UNSUPPORTED_MEDIA"
   | "TOO_LONG"
   | "CONVERSION_FAILED"
+  | "AUDIO_EXTRACTION_FAILED"
   | "TIMEOUT"
   | "VIDEO_DELETED"
   | "VIDEO_PRIVATE"
@@ -40,6 +41,10 @@ const defaults: Record<ErrorCode, { status: number; message: string }> = {
   UNSUPPORTED_MEDIA: { status: 415, message: "Ce fichier n'est pas une vidéo ou un audio exploitable." },
   TOO_LONG: { status: 413, message: "Ce contenu dépasse la durée maximale autorisée." },
   CONVERSION_FAILED: { status: 500, message: "La conversion a échoué." },
+  AUDIO_EXTRACTION_FAILED: {
+    status: 422,
+    message: "Le son de cette vidéo n'a pas pu être extrait : sa piste audio est inhabituelle. Téléchargez la vidéo en MP4, le son y est inclus, sans filigrane.",
+  },
   TIMEOUT: { status: 504, message: "Le traitement a pris trop de temps et a été interrompu." },
   VIDEO_DELETED: { status: 404, message: "Elle a été supprimée par son créateur ou retirée par TikTok. TokFlow ne peut donc pas la récupérer." },
   VIDEO_PRIVATE: { status: 403, message: "Elle est privée ou réservée à certains abonnés. Seules les vidéos publiques peuvent être récupérées." },

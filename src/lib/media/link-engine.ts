@@ -77,28 +77,21 @@ async function exec(args: string[], timeoutMs: number): Promise<string> {
   throw last;
 }
 
-/** Dernière ligne d'erreur du moteur, pour le diagnostic (aucune donnée personnelle). */
-function engineDetail(stderr: string): string | undefined {
-  const line = stderr.split("\n").map((l) => l.trim()).filter(Boolean).reverse().find((l) => /^ERROR|Error/.test(l)) ?? stderr.trim().split("\n").pop();
-  return line ? line.replace(/^ERROR:\s*/, "").slice(0, 220) : undefined;
-}
-
 /** Traduit une erreur du moteur en erreur lisible, sans jamais la masquer en succès. */
 export function classifyEngineError(stderr: string): ApiError {
-  const withDetail = (e: ApiError) => Object.assign(e, { detail: engineDetail(stderr) });
-  if (/Requested format/i.test(stderr)) return withDetail(new ApiError("NOT_FOUND", "Cette qualité n'est plus proposée par TikTok. Relancez la récupération du lien."));
-  if (/private|friends only|followers only|log ?in (is )?required|login required|requires? (login|authentication)|age.?restrict|sign in/i.test(stderr)) return withDetail(new ApiError("VIDEO_PRIVATE"));
-  if (/status_?code[^0-9]{0,4}10204|video (is )?not available|currently unavailable|has been removed|been deleted|does not exist|HTTP Error 404|removed by/i.test(stderr)) return withDetail(new ApiError("VIDEO_DELETED"));
+  if (/Requested format/i.test(stderr)) return new ApiError("NOT_FOUND", "Cette qualité n'est plus proposée par TikTok. Relancez la récupération du lien.");
+  if (/private|friends only|followers only|log ?in (is )?required|login required|requires? (login|authentication)|age.?restrict|sign in/i.test(stderr)) return new ApiError("VIDEO_PRIVATE");
+  if (/status_?code[^0-9]{0,4}10204|video (is )?not available|currently unavailable|has been removed|been deleted|does not exist|HTTP Error 404|removed by/i.test(stderr)) return new ApiError("VIDEO_DELETED");
   // TikTok renvoie le même refus (code 10204) pour une vidéo supprimée et pour un serveur bloqué :
   // fetchLinkMetadata lève l'ambiguïté avec une vidéo témoin.
   if (AMBIGUOUS_REFUSAL.test(stderr)) {
-    return withDetail(new ApiError("UPSTREAM_ERROR", "TikTok bloque l'accès à cette vidéo depuis notre serveur (restriction régionale ou adresse refusée). Elle existe peut-être, mais nous ne pouvons pas la récupérer."));
+    return new ApiError("UPSTREAM_ERROR", "TikTok bloque l'accès à cette vidéo depuis notre serveur (restriction régionale ou adresse refusée). Elle existe peut-être, mais nous ne pouvons pas la récupérer.");
   }
-  if (/proxy/i.test(stderr)) return withDetail(new ApiError("UPSTREAM_ERROR", "Le relais réseau du serveur ne répond pas. Réessayez dans quelques minutes."));
+  if (/proxy/i.test(stderr)) return new ApiError("UPSTREAM_ERROR", "Le relais réseau du serveur ne répond pas. Réessayez dans quelques minutes.");
   if (/403|forbidden|captcha|429|too many requests|unable to extract|impersonat|unexpected response|timed out|connection|temporar|5\d\d/i.test(stderr)) {
-    return withDetail(new ApiError("UPSTREAM_ERROR", "TikTok ne répond pas correctement à notre serveur pour le moment. Réessayez dans quelques minutes."));
+    return new ApiError("UPSTREAM_ERROR", "TikTok ne répond pas correctement à notre serveur pour le moment. Réessayez dans quelques minutes.");
   }
-  return withDetail(new ApiError("UPSTREAM_ERROR", "La vidéo n'a pas pu être récupérée pour le moment. Réessayez dans quelques minutes."));
+  return new ApiError("UPSTREAM_ERROR", "La vidéo n'a pas pu être récupérée pour le moment. Réessayez dans quelques minutes.");
 }
 
 function mapError(err: unknown): ApiError {
@@ -291,6 +284,44 @@ export async function previewStream(url: string, formatId: string, signal: Abort
     })(),
   );
   return Readable.toWeb(body) as ReadableStream<Uint8Array>;
+}
+
+/**
+ * Télécharge la piste audio seule (bien plus légère que la vidéo), avec repli sur le
+ * plus petit fichier complet. La conversion en MP3 qui suit est ainsi plus rapide et
+ * moins exposée aux pistes audio abîmées.
+ */
+export async function downloadAudioFromLink(url: string, dir: string): Promise<string> {
+  const common = ["--no-playlist", "--no-warnings", "--no-part", "--socket-timeout", "10", "--max-filesize", String(config.maxUploadBytes), "-o", join(dir, "audio.%(ext)s")];
+  const findAudio = async () => {
+    const file = (await readdir(dir)).find((f) => f.startsWith("audio."));
+    return file ? join(dir, file) : null;
+  };
+  // Chemin rapide : les adresses de flux de l'analyse sont encore valides.
+  const cached = recallInfo(url);
+  if (cached) {
+    try {
+      const infoFile = join(dir, "info.json");
+      await writeFile(infoFile, cached);
+      await execOnce([...common, "-f", "ba", "--load-info-json", infoFile], config.jobTimeoutMs);
+      const file = await findAudio();
+      if (file) return file;
+    } catch {
+      infoCache.delete(url);
+    }
+  }
+  let lastError: unknown;
+  for (const selector of ["ba", "worst"]) {
+    try {
+      await exec([...common, "-f", selector, url], config.jobTimeoutMs);
+    } catch (e) {
+      lastError = e;
+      continue;
+    }
+    const file = await findAudio();
+    if (file) return file;
+  }
+  throw mapError(lastError);
 }
 
 /**

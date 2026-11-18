@@ -176,6 +176,7 @@ export const en: Dictionary = {
       TIKTOK_FORMAT: "TikTok replied in an unexpected way",
       TOO_MANY: "Post too large",
       BUSY: "The service is very busy",
+      AUDIO_EXTRACTION_FAILED: "The sound could not be extracted",
     },
     messages: {
       VIDEO_DELETED: "The video was deleted or is no longer accessible.",
@@ -193,6 +194,7 @@ export const en: Dictionary = {
       TIKTOK_FORMAT: "The post could not be read. Try again later.",
       TOO_MANY: "This post contains too many items to be processed.",
       BUSY: "Several posts are already being processed. Try again in a few seconds.",
+      AUDIO_EXTRACTION_FAILED: "This video's audio track is unusual. Download the video in MP4: the sound is included, without watermark.",
       EXPIRED: "This analysis has expired. Run it again from the link.",
       IMAGE_UNAVAILABLE: "This image is no longer accessible. Run the analysis again.",
       NO_ANIMATION: "This banner has no animation.",

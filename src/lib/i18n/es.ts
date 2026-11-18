@@ -176,6 +176,7 @@ export const es: Dictionary = {
       TIKTOK_FORMAT: "TikTok ha respondido de forma inesperada",
       TOO_MANY: "Publicación demasiado grande",
       BUSY: "El servicio está muy solicitado",
+      AUDIO_EXTRACTION_FAILED: "No se pudo extraer el sonido",
     },
     messages: {
       VIDEO_DELETED: "El vídeo se ha eliminado o ya no es accesible.",
@@ -193,6 +194,7 @@ export const es: Dictionary = {
       TIKTOK_FORMAT: "No se ha podido leer la publicación. Inténtalo más tarde.",
       TOO_MANY: "Esta publicación contiene demasiados elementos para procesarla.",
       BUSY: "Ya se están procesando varias publicaciones. Inténtalo de nuevo en unos segundos.",
+      AUDIO_EXTRACTION_FAILED: "La pista de audio de este vídeo es poco habitual. Descarga el vídeo en MP4: el sonido va incluido, sin marca de agua.",
       EXPIRED: "Este análisis ha caducado. Vuelve a lanzarlo desde el enlace.",
       IMAGE_UNAVAILABLE: "Esta imagen ya no es accesible. Vuelve a lanzar el análisis.",
       NO_ANIMATION: "Este banner no tiene animación.",

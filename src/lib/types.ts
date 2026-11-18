@@ -12,8 +12,6 @@ export type AnalyzeResult = {
   linkDownload: boolean;
   /** Raison lisible lorsque `linkDownload` est faux. */
   linkUnavailableReason?: string;
-  /** Message technique du moteur, pour le diagnostic. */
-  engineDetail?: string;
   /** Qualités du flux d'origine, sans filigrane incrusté. */
   qualities: LinkQuality[];
 };

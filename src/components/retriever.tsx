@@ -7,17 +7,17 @@ import { AlertCircle, ArrowRight, Check, ClipboardPaste, Download, FileVideo, Li
 import { clipboardFromApp, insideApp } from "@/lib/app-bridge";
 import { DownloadError, requestFile, type DownloadPhase } from "@/lib/client-download";
 import { availableTargets, MP3_BITRATES, type Mp4Target, type OutputFormat } from "@/lib/media/formats";
-import { completeInBrowser } from "@/lib/banners/browser-clips";
 import { extractTikTokLink } from "@/lib/tiktok/url";
 import type { BannerSet } from "@/lib/banners/types";
 import type { AnalyzeResult, ApiErrorBody } from "@/lib/types";
 import { cn, formatDuration, shortFileName } from "@/lib/utils";
-// Le mode Bannières n'est chargé que lorsqu'un carrousel est demandé : la page d'accueil
-// et le téléchargement de vidéos n'embarquent pas ce code.
-const BannerGrid = dynamic(() => import("./banner-grid").then((m) => m.BannerGrid), { ssr: false });
 import { useI18n } from "./i18n-provider";
 import { Button } from "./ui/button";
 import { Notice, Select } from "./ui/field";
+
+// Le mode Bannières n'est chargé que lorsqu'un carrousel est demandé : la page d'accueil
+// et le téléchargement de vidéos n'embarquent pas ce code.
+const BannerGrid = dynamic(() => import("./banner-grid").then((m) => m.BannerGrid), { ssr: false });
 
 type Source = { kind: "link"; data: AnalyzeResult } | { kind: "banners"; data: BannerSet } | { kind: "file"; file: File; previewUrl: string; shortSide?: number; duration?: number };
 type Option = { id: string; label: string };
@@ -112,7 +112,9 @@ export function Retriever() {
   useEffect(() => {
     if (sharedHandled.current) return;
     sharedHandled.current = true;
-    const shared = new URLSearchParams(window.location.search).get("lien")?.trim();
+    const params = new URLSearchParams(window.location.search);
+    // « lien » est notre paramètre ; « url » couvre un envoi de formulaire avant que la page soit prête.
+    const shared = (params.get("lien") ?? params.get("url"))?.trim();
     if (!shared) return;
     window.history.replaceState(null, "", window.location.pathname + window.location.hash);
     setUrl(shared);
@@ -524,7 +526,8 @@ function Exporter({ videoOptions, cleanSource = false, run, onNewVideo }: {
   const [audio, setAudio] = useState("192");
   const [active, setActive] = useState<OutputFormat | null>(null);
   const [phase, setPhase] = useState<DownloadPhase | null>(null);
-  const [error, setError] = useState<{ format: OutputFormat; message: string } | null>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<{ format: OutputFormat; message: string; code?: string } | null>(null);
   const [cancelled, setCancelled] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const abort = useRef<AbortController | null>(null);
@@ -538,6 +541,11 @@ function Exporter({ videoOptions, cleanSource = false, run, onNewVideo }: {
 
   const busy = phase?.state === "preparing" || phase?.state === "downloading";
   const hasVideo = videoOptions.length > 0;
+
+  // Un échec doit être vu même si le visiteur a fait défiler la page.
+  useEffect(() => {
+    if (error || cancelled) statusRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [error, cancelled]);
 
   // Temps écoulé affiché pendant la préparation : le visiteur voit que le serveur travaille.
   useEffect(() => {
@@ -564,7 +572,7 @@ function Exporter({ videoOptions, cleanSource = false, run, onNewVideo }: {
     } catch (e) {
       setPhase(null);
       if ((e as Error).name === "AbortError") return;
-      setError({ format, message: (e instanceof DownloadError && apiMessage(e.code, e.message)) || t.common.downloadFailed });
+      setError({ format, message: (e instanceof DownloadError && apiMessage(e.code, e.message)) || t.common.downloadFailed, code: e instanceof DownloadError ? e.code : undefined });
     }
   }
 
@@ -595,7 +603,7 @@ function Exporter({ videoOptions, cleanSource = false, run, onNewVideo }: {
       */}
       <div className="tf-slot" data-open={busy || !!phase || !!error || cancelled ? "true" : "false"}>
         <div>
-          <div aria-live="polite" className="pt-4">
+          <div ref={statusRef} aria-live="polite" className="pt-4">
             {busy && (
               <div className="rounded-xl border border-line bg-canvas/60 p-4" data-testid="progress">
                 <div className="flex items-start justify-between gap-3">
@@ -644,9 +652,17 @@ function Exporter({ videoOptions, cleanSource = false, run, onNewVideo }: {
             {error && (
               <Notice tone="danger" className="tf-fade" title={t.tool.failedTitle} icon={<AlertCircle className="h-4.5 w-4.5" />}>
                 {error.message}
-                <button type="button" onClick={() => start(error.format)} className="mt-2 flex min-h-11 cursor-pointer items-center gap-1.5 font-medium underline underline-offset-4">
-                  <RotateCcw className="h-3.5 w-3.5" /> {t.common.retry}
-                </button>
+                <span className="mt-2 flex flex-wrap items-center gap-x-5">
+                  <button type="button" onClick={() => start(error.format)} className="flex min-h-11 cursor-pointer items-center gap-1.5 font-medium underline underline-offset-4">
+                    <RotateCcw className="h-3.5 w-3.5" /> {t.common.retry}
+                  </button>
+                  {/* Le son est inclus dans la vidéo : c'est la solution de repli quand la piste audio est particulière. */}
+                  {error.code === "AUDIO_EXTRACTION_FAILED" && hasVideo && (
+                    <button type="button" onClick={() => start("mp4")} className="flex min-h-11 cursor-pointer items-center gap-1.5 font-medium underline underline-offset-4">
+                      <Download className="h-3.5 w-3.5" /> {t.tool.downloadVideo}
+                    </button>
+                  )}
+                </span>
               </Notice>
             )}
           </div>
